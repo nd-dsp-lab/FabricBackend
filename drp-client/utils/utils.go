@@ -1,37 +1,28 @@
 package utils
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
-	"strings"
 	"time"
 )
 
 type RawRecord struct {
-	Drone                    string `json:"drone"`
-	Story                    string `json:"story"`
-	Zip                      string `json:"zip"`
-	Datetime                 string `json:"datetime"`
-	Temperature              string `json:"temperature"`
-	Wind                     string `json:"wind"`
-	Gust                     string `json:"gust"`
-	Timesincelastmaintenance string `json:"timesincelastmaintenance"`
-	Flighthours              string `json:"flighthours"`
-	Pitch                    string `json:"pitch"`
-	Roll                     string `json:"roll"`
-	Yaw                      string `json:"yaw"`
-	Vibex                    string `json:"vibex"`
-	Vibey                    string `json:"vibey"`
-	Vibez                    string `json:"vibez"`
-	Nsat                     string `json:"nsat"`
-	Noise                    string `json:"noise"`
-	Currentslope             string `json:"currentslope"`
-	Brownout                 string `json:"brownout"`
-	Batterylevel             string `json:"batterylevel"`
-	Crash                    string `json:"crash"`
+	ReturnToLaunchPlan     string `json:"RETURN_TO_LAUNCH_PLAN"`
+	OperateWithinWindspeed string `json:"OPERATE_WITHIN_WINDSPEED"`
+	MonitorWindConditions  string `json:"MONITOR_WIND_CONDITIONS"`
+	SeenWeatherForecast    string `json:"SEEN_WEATHER_FORECAST"`
+	SustainedWinds         string `json:"SUSTAINED_WINDS"`
+	SustainedWindsPercent  string `json:"SUSTAINED_WINDS_PERCENT"`
+	MaxWindspeed           string `json:"MAX_WINDSPEED"`
+	ExpirationDate         string `json:"expirationDate"`
+	CertificateName        string `json:"certificate_name"`
+	SubmittedBy            string `json:"submitted_by"`
+	SubmitterName          string `json:"submitter_name"`
+	CurrentDate            string `json:"current_date"`
+	SvgFile                string `json:"svg_file"`
+	Passed                 string `json:"passed"`
+	Archived               string `json:"archived"`
 }
 
 type Record struct {
@@ -66,34 +57,18 @@ func DecompressRecord(returnedRecord string) string {
 		if record.DroneID == "" {
 			continue
 		}
+
+		// use default id for testing
+		id := "user1"
+
 		// fmt.Println(record)
-		decryptedFlyRecord, _ := Decrypt(record.FlyRecord)
+		decryptedFlyRecord, _ := Decrypt(record.FlyRecord, id)
 		// fmt.Println(decryptedFlyRecord)
 		// split the decryptedFlyRecord by ","
-		stringSlice := strings.Split(decryptedFlyRecord, ",")
-		// fmt.Println(stringSlice)
-		rawRecord = RawRecord{
-			Drone:                    stringSlice[0],
-			Story:                    stringSlice[1],
-			Zip:                      stringSlice[2],
-			Datetime:                 stringSlice[3],
-			Temperature:              stringSlice[4],
-			Wind:                     stringSlice[5],
-			Gust:                     stringSlice[6],
-			Timesincelastmaintenance: stringSlice[7],
-			Flighthours:              stringSlice[8],
-			Pitch:                    stringSlice[9],
-			Roll:                     stringSlice[10],
-			Yaw:                      stringSlice[11],
-			Vibex:                    stringSlice[12],
-			Vibey:                    stringSlice[13],
-			Vibez:                    stringSlice[14],
-			Nsat:                     stringSlice[15],
-			Noise:                    stringSlice[16],
-			Currentslope:             stringSlice[17],
-			Brownout:                 stringSlice[18],
-			Batterylevel:             stringSlice[19],
-			Crash:                    stringSlice[20],
+		err := json.Unmarshal([]byte(decryptedFlyRecord), &rawRecord)
+		if err != nil {
+			fmt.Println("Error unmarshalling decryptedFlyRecord:", err)
+			continue
 		}
 
 		rawRecords = append(rawRecords, rawRecord)
@@ -106,74 +81,64 @@ func DecompressRecord(returnedRecord string) string {
 }
 
 func CompressRecord(rawRecord *RawRecord) *Record {
-	recordString := strings.Join([]string{
-		rawRecord.Drone,
-		rawRecord.Story,
-		rawRecord.Zip,
-		rawRecord.Datetime,
-		rawRecord.Temperature,
-		rawRecord.Wind,
-		rawRecord.Gust,
-		rawRecord.Timesincelastmaintenance,
-		rawRecord.Flighthours,
-		rawRecord.Pitch,
-		rawRecord.Roll,
-		rawRecord.Yaw,
-		rawRecord.Vibex,
-		rawRecord.Vibey,
-		rawRecord.Vibez,
-		rawRecord.Nsat,
-		rawRecord.Noise,
-		rawRecord.Currentslope,
-		rawRecord.Brownout,
-		rawRecord.Batterylevel,
-		rawRecord.Crash}, ",")
-	encryptedFlyRecord, _ := Encrypt(recordString)
+	// Convert the rawRecord to a string
+	jsonBytes, err := json.Marshal(rawRecord)
+
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil
+	}
+	recordString := string(jsonBytes)
+
+	// use default id for testing
+	id := "user1"
+
+	encryptedFlyRecord, _ := Encrypt(recordString, id)
 	droneRecord := Record{
-		DroneID:   rawRecord.Drone,
-		Zip:       rawRecord.Zip,
-		FlyTime:   ConvertToUnixTime(rawRecord.Datetime),
+		DroneID:   rawRecord.SubmittedBy,
+		Zip:       "",
+		FlyTime:   ConvertToUnixTime(rawRecord.ExpirationDate),
 		FlyRecord: encryptedFlyRecord,
 		Reserved:  "",
 	}
 	return &droneRecord
 }
 
-func ImportFromFile(filePath string) {
-	// Open the CSV file
-	csvFile, err := os.Open("./ds1.csv")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	defer csvFile.Close()
+// func ImportFromFile(filePath string) {
+// 	// Open the CSV file
+// 	csvFile, err := os.Open("./ds1.csv")
+// 	if err != nil {
+// 		fmt.Println("Error:", err)
+// 		return
+// 	}
+// 	defer csvFile.Close()
 
-	// Parse the CSV file
-	reader := csv.NewReader(csvFile)
-	reader.TrimLeadingSpace = true
-	records, err := reader.ReadAll()
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
+// 	// Parse the CSV file
+// 	reader := csv.NewReader(csvFile)
+// 	reader.TrimLeadingSpace = true
+// 	records, err := reader.ReadAll()
+// 	if err != nil {
+// 		fmt.Println("Error:", err)
+// 		return
+// 	}
 
-	// Convert the CSV records
-	for i, record := range records {
-		if i == 0 {
-			continue
-		}
+// 	// Convert the CSV records
+// 	for i, record := range records {
+// 		if i == 0 {
+// 			continue
+// 		}
 
-		flyRecord := strings.Join(record, ",")
-		encryptedFlyRecord, _ := Encrypt(flyRecord)
+// 		flyRecord := strings.Join(record, ",")
+// 		encryptedFlyRecord, _ := Encrypt(flyRecord)
 
-		droneRecord := Record{
-			DroneID:   record[0],
-			Zip:       record[2],
-			FlyTime:   ConvertToUnixTime(record[3]),
-			FlyRecord: encryptedFlyRecord,
-			Reserved:  "",
-		}
-		fmt.Println(i, droneRecord)
-		createDroneRecord(droneRecord.DroneID, droneRecord.Zip, droneRecord.FlyTime, droneRecord.FlyRecord, droneRecord.Reserved)
-	}
-}
+// 		droneRecord := Record{
+// 			DroneID:   record[0],
+// 			Zip:       record[2],
+// 			FlyTime:   ConvertToUnixTime(record[3]),
+// 			FlyRecord: encryptedFlyRecord,
+// 			Reserved:  "",
+// 		}
+// 		fmt.Println(i, droneRecord)
+// 		createDroneRecord(droneRecord.DroneID, droneRecord.Zip, droneRecord.FlyTime, droneRecord.FlyRecord, droneRecord.Reserved)
+// 	}
+// }

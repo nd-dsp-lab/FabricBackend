@@ -10,38 +10,14 @@ import (
 	"io"
 )
 
-// type Record struct {
-// 	drone                    string
-// 	story                    string
-// 	zip                      string
-// 	datetime                 string
-// 	temperature              string
-// 	wind                     string
-// 	gust                     string
-// 	timesincelastmaintenance string
-// 	flighthours              string
-// 	pitch                    string
-// 	roll                     string
-// 	yaw                      string
-// 	vibex                    string
-// 	vibey                    string
-// 	vibez                    string
-// 	nsat                     string
-// 	noise                    string
-// 	currentslope             string
-// 	brownout                 string
-// 	batterylevel             string
-// 	crash                    string
-// }
-
 const key = "thisis32bitlongpassphraseimusing"
 
 // For Testing purposes
-func Encrypt(plaintext string) (string, error) {
+func Encrypt(plaintext string, id string) (string, error) {
 	return encryptWithKey(plaintext, key)
 }
 
-func Decrypt(ciphertext string) (string, error) {
+func Decrypt(ciphertext string, id string) (string, error) {
 	return decryptWithKey(ciphertext, key)
 }
 
