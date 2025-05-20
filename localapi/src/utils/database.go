@@ -10,6 +10,7 @@ import (
 )
 
 // PutCertificateToDB stores the certificate in the database
+// makes sure that the CertificateID is unique
 func PutCertificateToDB(db *kivik.DB, certDBO *CertificateDBObject) error {
 	// Create a new document in the database
 	_, err := db.Put(context.Background(), certDBO.CertificateID, certDBO)
