@@ -1,5 +1,24 @@
 package utils
 
+
+// The Certificate struct represents the structure of a certificate
+// that is used in the application. It contains various fields
+// related to the drone, pilot, and certificate details.
+// This structure can be changed to suit the needs of the application.
+// 
+// PilotID, DroneID, and ExpirationDate are mandatory fields, because
+// they are used to identify the certificate and its validity.
+// Eventually the certificate will be stored as follow:
+// type CertificateDBObject struct {
+// 	PilotID        string `json:"pilot_id"`
+// 	CertificateID  string `json:"certificate_id"`
+// 	DroneID        string `json:"drone_id"`
+// 	ExpirationDate string `json:"expiration_date"`
+// 	CertificateContent    *Certificate `json:"certificate_content"`
+// 	SerializedCertificate string `json:"serialized_certificate"`
+// }
+// This structure can be changed in handlers.go, but it requires more modifications
+// in the code, so it is better to keep it as it is for now.
 type Certificate struct {
 	DroneID                string `json:"drone_id" default:"Drone01"`
 	PilotID                string `json:"pilot_id" default:"Pilot01"`

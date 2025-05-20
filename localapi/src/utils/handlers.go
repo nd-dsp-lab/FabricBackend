@@ -10,8 +10,8 @@ type CertificateDBObject struct {
 	PilotID        string `json:"pilot_id"`
 	CertificateID  string `json:"certificate_id"`
 	DroneID        string `json:"drone_id"`
-	// ExpirationDate string `json:"expiration_date"`
-	// CertificateContent    *Certificate `json:"certificate_content"`
+	ExpirationDate string `json:"expiration_date"`
+	CertificateContent    *Certificate `json:"certificate_content"`
 	SerializedCertificate string `json:"serialized_certificate"`
 }
 
