@@ -23,8 +23,6 @@ The CouchDB service will be at `http://localhost:5984`, you can access the Couch
 
 
 ## API
-The Certificate structure is defined in [./src/utils/certificate.go](localapi/src/utils/certificate.go). :
-
 
 The API provides the following endpoints:
 - `POST /certificates/create`: Create a new certificate.
@@ -41,4 +39,16 @@ Currently the API only supports the following fields in the selector:
 - `pilot_id`: The ID of the pilot.
 - `drone_id`: The ID of the drone.
 - `CertificateID`: The ID of the certificate, which is randomly generated.
+
+## Certificate Data Structure
+The Certificate structure is defined in [./src/utils/certificate.go](localapi/src/utils/certificate.go). :
+
+The Certificate struct defines the schema for certificates managed by the API. It contains fields related to the drone, pilot, and certificate details.
+
+Key fields:
+
+> pilot_id, drone_id, and expirationDate are mandatory for identifying the certificate and its validity.
+> CertificateID is currently a randomly generated unique identifier for the certificate. You change it in the GetCertificateDBObject function in [./src/utils/certificate.go](localapi/src/utils/certificate.go).
+
+The structure is designed for flexibility and can be modified as needed for your application. You can change the field names and types to suit your requirements. The API will automatically adapt to these changes as long as the data is properly formatted in JSON when sent to the API.
 
