@@ -50,6 +50,7 @@ type ReceviedCertificateResponse struct {
 		CertificateID  string `json:"certificate_id" doc:"Certificate ID"`
 		PilotID        string `json:"pilot_id" doc:"Pilot ID"`
 		DroneID        string `json:"drone_id" doc:"Drone ID"`
+		ExpirationDate string `json:"expiration_date" doc:"Expiration date"`
 		Message        string `json:"message" doc:"Message"`
 	}
 }
@@ -143,6 +144,7 @@ func main() {
 			resp.Body.CertificateID = cert_db_obj.CertificateID
 			resp.Body.PilotID = cert_db_obj.PilotID
 			resp.Body.DroneID = cert_db_obj.DroneID
+			resp.Body.ExpirationDate = cert_db_obj.ExpirationDate
 			resp.Body.Message = "Certificate received and stored successfully."
 			return resp, nil
 		})

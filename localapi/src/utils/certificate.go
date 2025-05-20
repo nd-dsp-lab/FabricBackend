@@ -1,5 +1,10 @@
 package utils
 
+import (
+	"encoding/json"
+	"strconv"
+	"time"
+)
 
 // The Certificate struct represents the structure of a certificate
 // that is used in the application. It contains various fields
@@ -47,14 +52,19 @@ func GetCertificateDBObject(cert *Certificate) (*CertificateDBObject, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Parse the ISO8601 expiration date to time.Time
+	expTime, err := time.Parse(time.RFC3339, cert.ExpirationDate)
+	if err != nil {
+		return nil, err
+	}
+
 	cert_db_obj := &CertificateDBObject{
 		PilotID:               cert.PilotID,
-		// Certificate ID can be modified here
 		CertificateID:         GetRandomString(10),
 		DroneID:               cert.DroneID,
-		ExpirationDate:        cert.ExpirationDate,
-		// CertificateContent: cert, 
-		// omitted for now
+		// ExpirationDate:        expTime.Unix(),
+		// ExpirationDate:        cert.ExpirationDate,
+		ExpirationDate:        strconv.FormatInt(expTime.Unix(), 10),
 		SerializedCertificate: string(serializedCert),
 	}
 	return cert_db_obj, nil

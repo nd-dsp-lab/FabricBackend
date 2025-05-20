@@ -3,7 +3,6 @@ package utils
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
 )
 
 type CertificateDBObject struct {
@@ -11,7 +10,7 @@ type CertificateDBObject struct {
 	CertificateID  string `json:"certificate_id"`
 	DroneID        string `json:"drone_id"`
 	ExpirationDate string `json:"expiration_date"`
-	CertificateContent    *Certificate `json:"certificate_content"`
+	// CertificateContent    *Certificate `json:"certificate_content"`
 	SerializedCertificate string `json:"serialized_certificate"`
 }
 
