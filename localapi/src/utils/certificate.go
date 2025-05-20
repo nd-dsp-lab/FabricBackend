@@ -38,3 +38,24 @@ type Certificate struct {
 	Passed                 string `json:"passed" default:"false"`
 	Archived               string `json:"archived" default:"false"`
 }
+
+
+// GetCertificateDBObject converts a Certificate struct to a CertificateDBObject struct.
+// CertificateID can be modified here to ensure uniqueness.
+func GetCertificateDBObject(cert *Certificate) (*CertificateDBObject, error) {
+	serializedCert, err := json.Marshal(cert)
+	if err != nil {
+		return nil, err
+	}
+	cert_db_obj := &CertificateDBObject{
+		PilotID:               cert.PilotID,
+		// Certificate ID can be modified here
+		CertificateID:         GetRandomString(10),
+		DroneID:               cert.DroneID,
+		ExpirationDate:        cert.ExpirationDate,
+		// CertificateContent: cert, 
+		// omitted for now
+		SerializedCertificate: string(serializedCert),
+	}
+	return cert_db_obj, nil
+}
