@@ -57,9 +57,11 @@ The Certificate structure is defined in [certificate.go](./src/utils/certificate
 
 The Certificate struct defines the schema for certificates managed by the API. It contains fields related to the drone, pilot, and certificate details.
 
-Key fields:
++ The ```Certificate``` struct defines the schema for certificates managed by the API. It includes fields for drone ID, pilot ID, expiration date (in ISO8601 format), and a serialized certificate string.
++ The minimum required fields for a certificate are drone_id, pilot_id, and expirationDate, which are used to identify and validate each certificate.
++ Certificates are stored in the database as ```CertificateDBObject```, which contains the certificate ID, pilot ID, drone ID, expiration date, and the serialized certificate content.
+  + CertificateID is currently a randomly generated unique identifier for the certificate. You can change it in the ```GetCertificateDBObject``` function in [certificate.go](./src/utils/certificate.go).
 
-+ pilot_id, drone_id, and expirationDate are mandatory for identifying the certificate and its validity.
-+ CertificateID is currently a randomly generated unique identifier for the certificate. You change it in the GetCertificateDBObject function in [certificate.go](./src/utils/certificate.go).
+  + The actual certificate content ```SerializedCertificate``` is a JSON string that can include additional operational and metadata fields, such as wind conditions, submitter info, SVG content, and status flags.
 
-The structure is designed for flexibility and can be modified as needed for your application. You can change the field names and types to suit your requirements. The API will automatically adapt to these changes as long as the data is properly formatted in JSON when sent to the API.
+The structure is designed for flexibility and can be modified as needed for your application. 
