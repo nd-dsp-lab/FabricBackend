@@ -6,31 +6,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strconv"
 
 	// Add this import statement
 	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
 	"github.com/hyperledger/fabric-contract-api-go/v2/contractapi"
 )
 
-// the index is
-const index = "id~time"
-
 type SimpleChaincode struct {
 	contractapi.Contract
 }
 
-// Structure of the flying record, only the droneID, droneZip and flytime are stored in the ledger for query
-// The rest are serialized and encrypted in the flyrecord field
-// if RecordID = droneID, the record is a meta record for the drone, FlyRecord holds the number of records for the drone, the rest are set empty for now, including DroneID
-// if RecordID = droneID_(digit), the record is a flying record for the drone, FlyRecord holds the encrypted flying record, the rest are set empty for now
+// Structure of the record, only the droneID, pilotID, zoneID, recordType and reserved are stored in the ledger for query
+// The rest are serialized and encrypted in the reserved field
 type Record struct {
-	RecordID  string `json:"recordID"`
-	DroneID   string `json:"droneID"`
-	Zip       string `json:"zip"`
-	FlyTime   int64  `json:"flyTime"`
-	FlyRecord string `json:"flyRecord"`
-	Reserved  string `json:"reserved"`
+	RecordID   string `json:"recordID"`
+	DroneID    string `json:"droneID"`
+	PilotID    string `json:"pilotID"`
+	ZoneID     string `json:"zoneID"`
+	RecordType string `json:"recordType"` // "profile" or "certificate"
+	Reserved   string `json:"reserved"`
 }
 
 type PaginatedQueryResult struct {
@@ -45,13 +39,13 @@ func (s *SimpleChaincode) Hello(ctx contractapi.TransactionContextInterface) str
 }
 
 // ReadRecord returns the record with the given recordID
-func (s *SimpleChaincode) ReadRecord(ctx contractapi.TransactionContextInterface, recordID string) (*Record, error) {
-	recordJSON, err := ctx.GetStub().GetState(recordID)
+func (s *SimpleChaincode) ReadSingleRecord(ctx contractapi.TransactionContextInterface, sessionID string) (*Record, error) {
+	recordJSON, err := ctx.GetStub().GetState(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read from world state: %v", err)
 	}
 	if recordJSON == nil {
-		return nil, fmt.Errorf("the record %s does not exist", recordID)
+		return nil, fmt.Errorf("the record %s does not exist", sessionID)
 	}
 
 	var record Record
@@ -63,43 +57,6 @@ func (s *SimpleChaincode) ReadRecord(ctx contractapi.TransactionContextInterface
 	return &record, nil
 }
 
-// // CreateMetaRecord adds a new meta rocord to the drone with droneID
-// func (s *SimpleChaincode) CreateMetaRecord(ctx contractapi.TransactionContextInterface, droneID string) error {
-
-// 	metaRecordJSON, _ := json.Marshal(metaRcord)
-
-// 	return ctx.GetStub().PutState(droneID, metaRecordJSON)
-// }
-
-// GetMetaRecord returns the meta record for the drone with droneID
-func (s *SimpleChaincode) GetMetaRecord(ctx contractapi.TransactionContextInterface, droneID string) (*Record, error) {
-	// check if the meta record exists
-	exists, _ := s.RecordExists(ctx, droneID)
-	var metaRecord Record
-	if !exists {
-		metaRecord = Record{
-			RecordID:  droneID,
-			DroneID:   "",
-			Zip:       "",
-			FlyTime:   -1,
-			FlyRecord: "0",
-			Reserved:  "",
-		}
-	} else {
-		metaRecordJSON, err := ctx.GetStub().GetState(droneID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get meta record for %s: %v", droneID, err)
-		}
-		fmt.Println("found MetaRecordJSON: ", metaRecordJSON)
-		err = json.Unmarshal(metaRecordJSON, &metaRecord)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &metaRecord, nil
-}
-
 func MD5Hash(text string) string {
 	hash := md5.New()
 	hash.Write([]byte(text))
@@ -107,23 +64,13 @@ func MD5Hash(text string) string {
 }
 
 // CreateRecord adds a new record to the world state with given details
-func (s *SimpleChaincode) CreateRecord(ctx contractapi.TransactionContextInterface, droneID string, zip string, flytime string, flyrecord string, reserved string) error {
+func (s *SimpleChaincode) CreateRecord(ctx contractapi.TransactionContextInterface, recordID string, droneID string, pilotID string, zoneID string, recordType string, reserved string) error {
 
-	// ========================================
-	// // Remove the meta record function to avoid read conflict
-	// var nextFlag int
-	// var metaRecord *Record
-	// metaRecord, _ = s.GetMetaRecord(ctx, droneID)
-	// fmt.Println("Got MetaRecord", metaRecord)
+	// if recordID is not provided, generate a random one
+	if recordID == "" {
+		recordID = MD5Hash(reserved)
+	}
 
-	// nextFlag, _ = strconv.Atoi(metaRecord.FlyRecord)
-	// nextFlag++
-
-	// // the recordID is a combination of the droneID_flytime
-	// recordID := droneID + "_" + strconv.Itoa(nextFlag)
-	// ========================================
-
-	recordID := droneID + "_" + MD5Hash(flyrecord)
 	// Check if the record already exists
 	exists, err := s.RecordExists(ctx, recordID)
 	if err != nil {
@@ -133,18 +80,13 @@ func (s *SimpleChaincode) CreateRecord(ctx contractapi.TransactionContextInterfa
 		return fmt.Errorf("the record %s already exists", recordID)
 	}
 
-	flyTimeInt, err := strconv.ParseInt(flytime, 10, 64)
-	if err != nil {
-		return err
-	}
-
 	record := Record{
-		RecordID:  recordID,
-		DroneID:   droneID,
-		Zip:       zip,
-		FlyTime:   flyTimeInt,
-		FlyRecord: flyrecord,
-		Reserved:  reserved,
+		RecordID:   recordID,
+		DroneID:    droneID,
+		PilotID:    pilotID,
+		ZoneID:     zoneID,
+		RecordType: recordType,
+		Reserved:   reserved,
 	}
 	// print the record to be created
 	fmt.Println("Record to be created", record)
@@ -161,34 +103,23 @@ func (s *SimpleChaincode) CreateRecord(ctx contractapi.TransactionContextInterfa
 		return err
 	}
 
-	// ========================================
-	// Remove the meta record function to avoid read conflict
-	// metaRecord.FlyRecord = strconv.Itoa(nextFlag)
-	// metaRecordJSON, _ := json.Marshal(metaRecord)
-	// err = ctx.GetStub().PutState(droneID, metaRecordJSON)
-	// if err != nil {
-	// 	fmt.Println("Error in updating meta record for", droneID, err)
-	// 	return err
-	// }
-	// ========================================
-
 	return nil
 }
 
 // InitLedger adds a base set of records to the ledger, not used in the current implementation
-func (s *SimpleChaincode) InitLedger(ctx contractapi.TransactionContextInterface) error {
+func (s *SimpleChaincode) InitLedgerWithExampleRecords(ctx contractapi.TransactionContextInterface) error {
 	records := []Record{
-		{DroneID: "drone1", Zip: "10001", FlyTime: 100, FlyRecord: "record1", Reserved: "reserved1"},
-		{DroneID: "drone2", Zip: "10002", FlyTime: 200, FlyRecord: "record2", Reserved: "reserved2"},
-		{DroneID: "drone3", Zip: "10003", FlyTime: 300, FlyRecord: "record3", Reserved: "reserved3"},
-		{DroneID: "drone4", Zip: "10004", FlyTime: 400, FlyRecord: "record4", Reserved: "reserved4"},
-		{DroneID: "drone5", Zip: "10005", FlyTime: 500, FlyRecord: "record5", Reserved: "reserved5"},
+		{RecordID: "record1", DroneID: "drone1", PilotID: "pilot1", ZoneID: "zone1", RecordType: "profile", Reserved: "reserved1"},
+		{RecordID: "record2", DroneID: "drone2", PilotID: "pilot2", ZoneID: "zone2", RecordType: "profile", Reserved: "reserved2"},
+		{RecordID: "record3", DroneID: "drone3", PilotID: "pilot3", ZoneID: "zone3", RecordType: "profile", Reserved: "reserved3"},
+		{RecordID: "record4", DroneID: "drone4", PilotID: "pilot4", ZoneID: "zone4", RecordType: "profile", Reserved: "reserved4"},
+		{RecordID: "record5", DroneID: "drone5", PilotID: "pilot5", ZoneID: "zone5", RecordType: "profile", Reserved: "reserved5"},
 	}
 
 	// records, _ := importFromFile()
 
 	for _, record := range records {
-		err := s.CreateRecord(ctx, record.DroneID, record.Zip, strconv.FormatInt(record.FlyTime, 10), record.FlyRecord, record.Reserved)
+		err := s.CreateRecord(ctx, record.RecordID, record.DroneID, record.PilotID, record.ZoneID, record.RecordType, record.Reserved)
 		if err != nil {
 			return err
 		}
@@ -283,6 +214,12 @@ func (s *SimpleChaincode) QueryRecords(ctx contractapi.TransactionContextInterfa
 // QueryRecordsByDroneID queries for records based on a passed in droneID.
 func (s *SimpleChaincode) QueryRecordsByDroneID(ctx contractapi.TransactionContextInterface, droneID string) ([]*Record, error) {
 	queryString := fmt.Sprintf(`{"selector":{"droneID":"%s"}}`, droneID)
+	return s.getQueryResultForQueryString(ctx, queryString)
+}
+
+// QueryRecordsByPilotID queries for records based on a passed in pilotID.
+func (s *SimpleChaincode) QueryRecordsByPilotID(ctx contractapi.TransactionContextInterface, pilotID string) ([]*Record, error) {
+	queryString := fmt.Sprintf(`{"selector":{"pilotID":"%s"}}`, pilotID)
 	return s.getQueryResultForQueryString(ctx, queryString)
 }
 

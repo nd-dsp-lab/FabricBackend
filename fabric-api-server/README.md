@@ -1,0 +1,67 @@
+# Local API Documentation
+
+## Overview
+
+This project provides a local RESTful API service written in Go for certificate management, using CouchDB as the backend database. The service is containerized and managed via Docker Compose for easy local development and testing.
+
+---
+
+## Start the Service
+
+Make sure you have [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) installed.
+
+From the `localapi` directory, run:
+
+```bash
+docker compose up --build
+```
+This command will build the Docker images and start the containers defined in the `docker-compose.yml` file. 
+
+The API will be available at `http://localhost:8080`, you can get a visulized view of API at `http://localhost:8080/docs#`
+
+The CouchDB service will be at `http://localhost:5984`, you can access the CouchDB web interface at `http://localhost:5984/_utils/` (username: `admin`, password: `admin123`).
+
+
+## API
+
+The API provides the following endpoints:
+- `POST /certificates/create`: Create a new certificate.
+- `POST /certificates/query`: Query for certificates with a Mango selector:
+```json
+{
+  "selector": {
+    "pilot_id": "Pilot00"
+  }
+}
+```
+The selector is a JSON object that specifies the criteria for the query. The API will return all certificates that match the selector.
+Currently the API only supports the following fields in the selector:
+- `pilot_id`: The ID of the pilot.
+- `drone_id`: The ID of the drone.
+- `CertificateID`: The ID of the certificate, which is randomly generated.
+
+- `expirationDate`: The expiration date of the certificate. The date is stored as a base 10 string of the Unix timestamp in milliseconds. You need to convert the date to a Unix timestamp in milliseconds before sending it to the API. The API will return all certificates that match the selector. Check [Mango](https://docs.couchdb.org/en/stable/ddocs/mango.html#find-selectors) for more details on the selector syntax.
+```json
+{
+  "selector": {
+    "expiration_date": {
+      "$lt" : "1852247579"
+      }
+  }
+}
+```
+
+
+## Certificate Data Structure
+The Certificate structure is defined in [certificate.go](./src/utils/certificate.go):
+
+The Certificate struct defines the schema for certificates managed by the API. It contains fields related to the drone, pilot, and certificate details.
+
++ The ```Certificate``` struct defines the schema for certificates managed by the API. It includes fields for drone ID, pilot ID, expiration date (in ISO8601 format), and a serialized certificate string.
++ The minimum required fields for a certificate are drone_id, pilot_id, and expirationDate, which are used to identify and validate each certificate.
++ Certificates are stored in the database as ```CertificateDBObject```, which contains the certificate ID, pilot ID, drone ID, expiration date, and the serialized certificate content.
+  + CertificateID is currently a randomly generated unique identifier for the certificate. You can change it in the ```GetCertificateDBObject``` function in [certificate.go](./src/utils/certificate.go).
+
+  + The actual certificate content ```SerializedCertificate``` is a JSON string that can include additional operational and metadata fields, such as wind conditions, submitter info, SVG content, and status flags.
+
+The structure is designed for flexibility and can be modified as needed for your application. 
