@@ -1,5 +1,5 @@
 services:
-  local-api:
+  fabric-api-server:
     build:
       context: .
       dockerfile: Dockerfile
