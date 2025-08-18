@@ -396,7 +396,7 @@ func main() {
 			Path:          "/records/history",
 			Summary:       "Get the history of a record",
 			Tags:          []string{"Records"},
-			Description:   "Get the history of a record.",
+			Description:   "Get the history of a record. This api requires the recordID to be provided.",
 			DefaultStatus: http.StatusOK,
 		}, func(ctx context.Context, input *RecordIDInput) (*HistoryQueryResultList, error) {
 			historyJSON, err := utils.GetRecordHistory(input.Body.RecordID)

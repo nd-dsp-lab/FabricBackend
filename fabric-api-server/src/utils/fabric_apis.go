@@ -17,14 +17,36 @@ import (
 )
 
 const (
-	mspID        = "Org1MSP"
-	cryptoPath   = "../fabric-samples/test-network/organizations/peerOrganizations/org1.example.com"
-	certPath     = cryptoPath + "/users/User1@org1.example.com/msp/signcerts"
-	keyPath      = cryptoPath + "/users/User1@org1.example.com/msp/keystore"
-	tlsCertPath  = cryptoPath + "/peers/peer0.org1.example.com/tls/ca.crt"
-	peerEndpoint = "dns:///localhost:7051"
-	gatewayPeer  = "peer0.org1.example.com"
+	mspID       = "Org1MSP"
+	gatewayPeer = "peer0.org1.example.com"
 )
+
+var (
+	cryptoPath   string
+	certPath     string
+	keyPath      string
+	tlsCertPath  string
+	peerEndpoint string
+)
+
+func init() {
+	// Get crypto path from environment or use default
+	cryptoPath = os.Getenv("CRYPTO_PATH")
+	if cryptoPath == "" {
+		cryptoPath = "../fabric-samples/test-network/organizations/peerOrganizations/org1.example.com"
+	}
+	
+	// Build paths based on crypto path
+	certPath = cryptoPath + "/users/User1@org1.example.com/msp/signcerts"
+	keyPath = cryptoPath + "/users/User1@org1.example.com/msp/keystore"
+	tlsCertPath = cryptoPath + "/peers/peer0.org1.example.com/tls/ca.crt"
+	
+	// Get peer endpoint from environment or use default
+	peerEndpoint = os.Getenv("PEER_ENDPOINT")
+	if peerEndpoint == "" {
+		peerEndpoint = "dns:///tjws-06.cse.nd.edu:7051"
+	}
+}
 
 var (
 	GatewayConn    *client.Gateway

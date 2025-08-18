@@ -4,26 +4,14 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "8001:8080"
     environment:
       - ENV=development
+      - CRYPTO_PATH=/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com
+      - PEER_ENDPOINT=dns:///tjws-06.cse.nd.edu:7051
     volumes:
       - ./src:/app/src
-    networks:
-      - api-network
-    depends_on:
-      - couchdb
-  
-  couchdb:
-    image: couchdb:3.3
-    container_name: couchdb
-    ports:
-      - "5984:5984"
-    environment:
-      - COUCHDB_USER=admin
-      - COUCHDB_PASSWORD=admin123
-    volumes:
-      - couchdb_data:/opt/couchdb/data
+      - ../fabric-samples:/fabric-samples
     networks:
       - api-network
 
