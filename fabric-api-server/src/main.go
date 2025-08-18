@@ -55,6 +55,7 @@ type ProfileInput struct {
 type ReceviedRecordResponse struct {
 	Body struct {
 		Message string `json:"message" doc:"Message"`
+		Record  utils.Record `json:"record" doc:"Record"`
 	}
 }
 
@@ -153,6 +154,7 @@ func main() {
 			}
 			resp := &ReceviedRecordResponse{}
 			resp.Body.Message = "Record created successfully."
+			resp.Body.Record = record
 			return resp, nil
 		})
 
@@ -177,6 +179,14 @@ func main() {
 			// Generate the response
 			resp := &ReceviedRecordResponse{}
 			resp.Body.Message = "Certificate received and stored successfully."
+			resp.Body.Record = utils.Record{
+				RecordID: input.Body.RecordID,
+				DroneID:  input.Body.DroneID,
+				PilotID:  input.Body.PilotID,
+				ZoneID:   input.Body.ZoneID,
+				RecordType: "certificate",
+				Reserved:   input.Body.Reserved,
+			}
 			return resp, nil
 		})
 
@@ -201,6 +211,14 @@ func main() {
 
 			resp := &ReceviedRecordResponse{}
 			resp.Body.Message = "Profile received and stored successfully."
+			resp.Body.Record = utils.Record{
+				RecordID:   input.Body.RecordID,
+				DroneID:    input.Body.DroneID,
+				PilotID:    input.Body.PilotID,
+				ZoneID:     input.Body.ZoneID,
+				RecordType: "profile",
+				Reserved:   input.Body.Reserved,
+			}
 			return resp, nil
 		})
 
@@ -306,6 +324,14 @@ func main() {
 			err = utils.UpdateRecord(input.Body.RecordID, droneID, pilotID, zoneID, "profile", reserved)
 			resp := &ReceviedRecordResponse{}
 			resp.Body.Message = "Profile updated successfully."
+			resp.Body.Record = utils.Record{
+				RecordID:   input.Body.RecordID,
+				DroneID:    droneID,
+				PilotID:    pilotID,
+				ZoneID:     zoneID,
+				RecordType: "profile",
+				Reserved:   reserved,
+			}
 			return resp, nil
 		})
 
@@ -386,6 +412,14 @@ func main() {
 			}
 			resp := &ReceviedRecordResponse{}
 			resp.Body.Message = "Record updated successfully."
+			resp.Body.Record = utils.Record{
+				RecordID:   input.Body.RecordID,
+				DroneID:    input.Body.DroneID,
+				PilotID:    input.Body.PilotID,
+				ZoneID:     input.Body.ZoneID,
+				RecordType: input.Body.RecordType,
+				Reserved:   input.Body.Reserved,
+			}
 			return resp, nil
 		})
 
