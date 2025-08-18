@@ -12,6 +12,7 @@
 
 # Go build cache
 /.cache/
+/vendor/
 
 # Go test cache
 /.testcache/

@@ -32,10 +32,6 @@ var (
 	ClientContract *client.Contract
 )
 
-// testing
-var now = time.Now()
-var assetId = fmt.Sprintf("asset%d", now.Unix()*1e3+int64(now.Nanosecond())/1e6)
-
 // InitGateway initializes the Gateway connection.
 func InitGateway() {
 	ClientConn = newGrpcConnection()
@@ -165,7 +161,7 @@ func formatJSON(data []byte) string {
 func InitLedgerWithExampleRecords() error {
 	_, err := ClientContract.SubmitTransaction("InitLedgerWithExampleRecords")
 	if err != nil {
-		fmt.Printf("failed to submit transaction: %v\n", err)
+		fmt.Printf("failed to submit InitLedgerWithExampleRecords transaction: %v\n", err)
 		return err
 	}
 	return nil
@@ -174,7 +170,7 @@ func InitLedgerWithExampleRecords() error {
 func CreateRecord(recordID string, droneID string, pilotID string, zoneID string, recordType string, reserved string) error {
 	_, err := ClientContract.SubmitTransaction("CreateRecord", recordID, droneID, pilotID, zoneID, recordType, reserved)
 	if err != nil {
-		fmt.Printf("failed to submit transaction, possibly the record already exists: %v\n", err)
+		fmt.Printf("failed to submit CreateRecord transaction, possibly the record already exists: %v\n", err)
 		return err
 	}
 	return nil
@@ -183,7 +179,7 @@ func CreateRecord(recordID string, droneID string, pilotID string, zoneID string
 func GetAllRecords() (string, error) {
 	evaluateResult, err := ClientContract.EvaluateTransaction("GetAllRecords")
 	if err != nil {
-		fmt.Printf("failed to evaluate transaction: %v\n", err)
+		fmt.Printf("failed to evaluate GetAllRecords transaction: %v\n", err)
 		return "", err
 	}
 	// Handle empty results (no records found)
@@ -194,6 +190,15 @@ func GetAllRecords() (string, error) {
 	log.Printf("evaluateResult: %s", string(evaluateResult))
 	result := formatJSON(evaluateResult)
 	return result, nil
+}
+
+func UpdateRecord(recordID string, droneID string, pilotID string, zoneID string, recordType string, reserved string) error {
+	_, err := ClientContract.SubmitTransaction("UpdateRecord", recordID, droneID, pilotID, zoneID, recordType, reserved)
+	if err != nil {
+		fmt.Printf("failed to submit UpdateRecord transaction: %v\n", err)
+		return err
+	}
+	return nil
 }
 
 func GetRecordWithSelector(rawSelector string) (string, error) {
@@ -209,13 +214,24 @@ func GetRecordWithSelector(rawSelector string) (string, error) {
 
 	evaluateResult, err := ClientContract.EvaluateTransaction("QueryRecords", rawSelector)
 	if err != nil {
-		fmt.Printf("failed to evaluate transaction: %v\n", err)
+		fmt.Printf("failed to evaluate QueryRecords transaction: %v\n", err)
 		return "", err
 	}
 
 	// Handle empty results (no records found)
 	if len(evaluateResult) == 0 {
 		return "[]", nil
+	}
+
+	result := formatJSON(evaluateResult)
+	return result, nil
+}
+
+func GetRecordHistory(recordID string) (string, error) {
+	evaluateResult, err := ClientContract.EvaluateTransaction("GetRecordHistory", recordID)
+	if err != nil {
+		fmt.Printf("failed to evaluate GetRecordHistory transaction: %v\n", err)
+		return "", err
 	}
 
 	result := formatJSON(evaluateResult)

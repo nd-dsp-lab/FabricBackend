@@ -78,3 +78,12 @@ func GetRecordDBObject(record *Record) (*Record, error) {
 	}
 	return record_db_obj, nil
 }
+
+// get the value of a field in a map, return empty string if the field is not found
+func GetFieldFromMap(m map[string]interface{}, field string) (string, error) {
+	value, ok := m[field]
+	if !ok {
+		return "", nil
+	}
+	return value.(string), nil
+}

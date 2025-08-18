@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	// Add this import statement
 	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
@@ -27,6 +28,13 @@ type Record struct {
 	Reserved   string `json:"reserved"`
 }
 
+type HistoryQueryResult struct {
+	Record    *Record   `json:"record"`
+	TxId      string    `json:"txId"`
+	Timestamp time.Time `json:"timestamp"`
+	IsDelete  bool      `json:"isDelete"`
+}
+
 type PaginatedQueryResult struct {
 	Records             []Record `json:"records"`
 	FetchedRecordsCount int32    `json:"fetchedRecordsCount"`
@@ -39,13 +47,13 @@ func (s *SimpleChaincode) Hello(ctx contractapi.TransactionContextInterface) str
 }
 
 // ReadRecord returns the record with the given recordID
-func (s *SimpleChaincode) ReadSingleRecord(ctx contractapi.TransactionContextInterface, sessionID string) (*Record, error) {
-	recordJSON, err := ctx.GetStub().GetState(sessionID)
+func (s *SimpleChaincode) ReadRecord(ctx contractapi.TransactionContextInterface, recordID string) (*Record, error) {
+	recordJSON, err := ctx.GetStub().GetState(recordID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read from world state: %v", err)
 	}
 	if recordJSON == nil {
-		return nil, fmt.Errorf("the record %s does not exist", sessionID)
+		return nil, fmt.Errorf("the record %s does not exist", recordID)
 	}
 
 	var record Record
@@ -221,6 +229,82 @@ func (s *SimpleChaincode) QueryRecordsByDroneID(ctx contractapi.TransactionConte
 func (s *SimpleChaincode) QueryRecordsByPilotID(ctx contractapi.TransactionContextInterface, pilotID string) ([]*Record, error) {
 	queryString := fmt.Sprintf(`{"selector":{"pilotID":"%s"}}`, pilotID)
 	return s.getQueryResultForQueryString(ctx, queryString)
+}
+
+// GetRecordHistory returns the history of records for a given recordID.
+func (s *SimpleChaincode) GetRecordHistory(ctx contractapi.TransactionContextInterface, recordID string) ([]HistoryQueryResult, error) {
+	resultsIterator, err := ctx.GetStub().GetHistoryForKey(recordID)
+	if err != nil {
+		return nil, err
+	}
+	defer resultsIterator.Close()
+
+	var historyRecords []HistoryQueryResult
+	for resultsIterator.HasNext() {
+		response, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		var record Record
+		if len(response.Value) > 0 {
+			err = json.Unmarshal(response.Value, &record)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			record = Record{
+				RecordID: recordID,
+			}
+		}
+
+		historyRecord := HistoryQueryResult{
+			TxId:      response.TxId,
+			Timestamp: response.Timestamp.AsTime(),
+			Record:    &record,
+			IsDelete:  response.IsDelete,
+		}
+		historyRecords = append(historyRecords, historyRecord)
+	}
+	return historyRecords, nil
+}
+
+// update record
+func (s *SimpleChaincode) UpdateRecord(ctx contractapi.TransactionContextInterface, recordID string, droneID string, pilotID string, zoneID string, recordType string, reserved string) error {
+
+	record, err := s.ReadRecord(ctx, recordID)
+	if err != nil {
+		return fmt.Errorf("failed to read record %s from world state: %v", recordID, err)
+	}
+
+	// if the field is not provided, do not update it
+	if droneID != "" {
+		record.DroneID = droneID
+	}
+	if pilotID != "" {
+		record.PilotID = pilotID
+	}
+	if zoneID != "" {
+		record.ZoneID = zoneID
+	}
+	if recordType != "" {
+		record.RecordType = recordType
+	}
+	if reserved != "" {
+		record.Reserved = reserved
+	}
+
+	recordJSON, err := json.Marshal(record)
+	if err != nil {
+		return err
+	}
+
+	err = ctx.GetStub().PutState(recordID, recordJSON)
+	if err != nil {
+		return fmt.Errorf("failed to update record %s in world state: %v", recordID, err)
+	}
+
+	return nil
 }
 
 func main() {

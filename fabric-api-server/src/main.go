@@ -7,6 +7,7 @@ import (
 	"go-huma-api-server/src/utils"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
@@ -41,9 +42,25 @@ type CertificateInput struct {
 	}
 }
 
+type ProfileInput struct {
+	Body struct {
+		RecordID string `json:"recordID" doc:"Record ID"`
+		DroneID  string `json:"droneID" doc:"Drone ID"`
+		PilotID  string `json:"pilotID" doc:"Pilot ID"`
+		ZoneID   string `json:"zoneID" doc:"Zone ID"`
+		Reserved string `json:"reserved" doc:"Reserved, a serialized JSON string"`
+	}
+}
+
 type ReceviedRecordResponse struct {
 	Body struct {
 		Message string `json:"message" doc:"Message"`
+	}
+}
+
+type RecordIDInput struct {
+	Body struct {
+		RecordID string `json:"recordID" doc:"Record ID"`
 	}
 }
 
@@ -72,17 +89,28 @@ type ProfileSelector struct {
 	}
 }
 
-type EmptyInput struct{}
-
-type ProfileInput struct {
+type ProfileUpdateInput struct {
 	Body struct {
-		RecordID string `json:"recordID" doc:"Record ID"`
-		DroneID  string `json:"droneID" doc:"Drone ID"`
-		PilotID  string `json:"pilotID" doc:"Pilot ID"`
-		ZoneID   string `json:"zoneID" doc:"Zone ID"`
-		Reserved string `json:"reserved" doc:"Reserved, a serialized JSON string"`
+		RecordID   string                 `json:"recordID" doc:"Record ID"`
+		UpdateInfo map[string]interface{} `json:"updateInfo" doc:"Info to update the profile" default:"{\"droneID\": \"drone1\", \"pilotID\": \"Pilot00\", \"zoneID\": \"Zone00\", \"reserved\": \"\"}"`
 	}
 }
+
+type HistoryQueryResult struct {
+	TxId      string        `json:"txId"`
+	Timestamp time.Time     `json:"timestamp"`
+	IsDelete  bool          `json:"isDelete"`
+	Record    *utils.Record `json:"record"`
+}
+
+type HistoryQueryResultList struct {
+	Body struct {
+		Message string               `json:"message" doc:"Message"`
+		History []HistoryQueryResult `json:"history" doc:"History of the record"`
+	}
+}
+
+type EmptyInput struct{}
 
 func main() {
 
@@ -183,7 +211,7 @@ func main() {
 			Path:          "/certificates/query",
 			Summary:       "Query certificates with selector",
 			Tags:          []string{"Certificates"},
-			Description:   "Query certificates with a selector.",
+			Description:   "Query certificates with a standard mango selector.",
 			DefaultStatus: http.StatusOK,
 		}, func(ctx context.Context, input *CertificateSelector) (*RecordListResponse, error) {
 			// log.Printf("Received selector: %v", input.Body.Selector)
@@ -220,7 +248,7 @@ func main() {
 			Path:          "/profiles/query",
 			Summary:       "Query profiles with selector",
 			Tags:          []string{"Profiles"},
-			Description:   "Query profiles with a selector.",
+			Description:   "Query profiles with a selector. This is the same api as the records/query api.",
 			DefaultStatus: http.StatusOK,
 		}, func(ctx context.Context, input *ProfileSelector) (*RecordListResponse, error) {
 			// Convert selector map to JSON string
@@ -244,6 +272,40 @@ func main() {
 			resp := &RecordListResponse{}
 			resp.Body.Message = fmt.Sprintf("Found %d records", len(records))
 			resp.Body.Records = records
+			return resp, nil
+		})
+
+		// Register POST /profiles/update
+		huma.Register(api, huma.Operation{
+			OperationID:   "post-profile-update",
+			Method:        http.MethodPost,
+			Path:          "/profiles/update",
+			Summary:       "Update a profile",
+			Tags:          []string{"Profiles"},
+			Description:   "Update a profile. The RecordID is required to identify the profile. The updateInfo is a map of the fields to update (droneID, pilotID, zoneID, reserved), if a field is not provided, that field will not be updated. This is the same api as the records/update api, with the recordType set to 'profile' at the server side.",
+			DefaultStatus: http.StatusOK,
+		}, func(ctx context.Context, input *ProfileUpdateInput) (*ReceviedRecordResponse, error) {
+			// get the fields from the updateInfo map
+			droneID, err := utils.GetFieldFromMap(input.Body.UpdateInfo, "droneID")
+			if err != nil {
+				return nil, err
+			}
+			pilotID, err := utils.GetFieldFromMap(input.Body.UpdateInfo, "pilotID")
+			if err != nil {
+				return nil, err
+			}
+			zoneID, err := utils.GetFieldFromMap(input.Body.UpdateInfo, "zoneID")
+			if err != nil {
+				return nil, err
+			}
+			reserved, err := utils.GetFieldFromMap(input.Body.UpdateInfo, "reserved")
+			if err != nil {
+				return nil, err
+			}
+
+			err = utils.UpdateRecord(input.Body.RecordID, droneID, pilotID, zoneID, "profile", reserved)
+			resp := &ReceviedRecordResponse{}
+			resp.Body.Message = "Profile updated successfully."
 			return resp, nil
 		})
 
@@ -308,7 +370,52 @@ func main() {
 			return resp, nil
 		})
 
-		// Tell the CLI how to start your server.
+		// Register POST /records/update
+		huma.Register(api, huma.Operation{
+			OperationID:   "post-record-update",
+			Method:        http.MethodPost,
+			Path:          "/records/update",
+			Summary:       "Update a record",
+			Tags:          []string{"Records"},
+			Description:   "Update a record.",
+			DefaultStatus: http.StatusOK,
+		}, func(ctx context.Context, input *RecordInput) (*ReceviedRecordResponse, error) {
+			err := utils.UpdateRecord(input.Body.RecordID, input.Body.DroneID, input.Body.PilotID, input.Body.ZoneID, input.Body.RecordType, input.Body.Reserved)
+			if err != nil {
+				return nil, err
+			}
+			resp := &ReceviedRecordResponse{}
+			resp.Body.Message = "Record updated successfully."
+			return resp, nil
+		})
+
+		// Register POST /records/history
+		huma.Register(api, huma.Operation{
+			OperationID:   "post-record-history",
+			Method:        http.MethodPost,
+			Path:          "/records/history",
+			Summary:       "Get the history of a record",
+			Tags:          []string{"Records"},
+			Description:   "Get the history of a record.",
+			DefaultStatus: http.StatusOK,
+		}, func(ctx context.Context, input *RecordIDInput) (*HistoryQueryResultList, error) {
+			historyJSON, err := utils.GetRecordHistory(input.Body.RecordID)
+			if err != nil {
+				return nil, err
+			}
+
+			var history []HistoryQueryResult
+			err = json.Unmarshal([]byte(historyJSON), &history)
+			if err != nil {
+				return nil, err
+			}
+
+			resp := &HistoryQueryResultList{}
+			resp.Body.Message = fmt.Sprintf("Found %d history records", len(history))
+			resp.Body.History = history
+			return resp, nil
+		})
+
 		hooks.OnStart(func() {
 			fmt.Printf("Starting server on port %d...\n", options.Port)
 			http.ListenAndServe(fmt.Sprintf(":%d", options.Port), router)
