@@ -35,16 +35,16 @@ func init() {
 	if cryptoPath == "" {
 		cryptoPath = "../fabric-samples/test-network/organizations/peerOrganizations/org1.example.com"
 	}
-	
+
 	// Build paths based on crypto path
 	certPath = cryptoPath + "/users/User1@org1.example.com/msp/signcerts"
 	keyPath = cryptoPath + "/users/User1@org1.example.com/msp/keystore"
 	tlsCertPath = cryptoPath + "/peers/peer0.org1.example.com/tls/ca.crt"
-	
+
 	// Get peer endpoint from environment or use default
 	peerEndpoint = os.Getenv("PEER_ENDPOINT")
 	if peerEndpoint == "" {
-		peerEndpoint = "dns:///tjws-06.cse.nd.edu:7051"
+		peerEndpoint = "localhost:7051"
 	}
 }
 

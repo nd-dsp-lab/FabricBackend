@@ -8,7 +8,7 @@ services:
     environment:
       - ENV=development
       - CRYPTO_PATH=/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com
-      - PEER_ENDPOINT=dns:///tjws-06.cse.nd.edu:7051
+      - PEER_ENDPOINT=dns:///localhost:7051
     volumes:
       - ./src:/app/src
       - ../fabric-samples:/fabric-samples

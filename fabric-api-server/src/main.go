@@ -18,7 +18,7 @@ import (
 )
 
 type Options struct {
-	Port int `help:"Port to listen on" short:"p" default:"8080"`
+	Port int `help:"Port to listen on" short:"p" default:"8001"`
 }
 
 type RecordInput struct {
@@ -54,7 +54,7 @@ type ProfileInput struct {
 
 type ReceviedRecordResponse struct {
 	Body struct {
-		Message string `json:"message" doc:"Message"`
+		Message string       `json:"message" doc:"Message"`
 		Record  utils.Record `json:"record" doc:"Record"`
 	}
 }
@@ -128,7 +128,11 @@ func main() {
 	cli := humacli.New(func(hooks humacli.Hooks, options *Options) {
 		// Create a new router & API
 		router := chi.NewMux()
-		api := humachi.New(router, huma.DefaultConfig("My API", "1.0.0"))
+		config := huma.DefaultConfig("My API", "1.0.0")
+		config.Servers = []*huma.Server{
+			{URL: "https://proxy.web3db.org/nasa-project"},
+		}
+		api := humachi.New(router, config)
 
 		// Register POST /create-record
 		huma.Register(api, huma.Operation{
@@ -180,10 +184,10 @@ func main() {
 			resp := &ReceviedRecordResponse{}
 			resp.Body.Message = "Certificate received and stored successfully."
 			resp.Body.Record = utils.Record{
-				RecordID: input.Body.RecordID,
-				DroneID:  input.Body.DroneID,
-				PilotID:  input.Body.PilotID,
-				ZoneID:   input.Body.ZoneID,
+				RecordID:   input.Body.RecordID,
+				DroneID:    input.Body.DroneID,
+				PilotID:    input.Body.PilotID,
+				ZoneID:     input.Body.ZoneID,
 				RecordType: "certificate",
 				Reserved:   input.Body.Reserved,
 			}
