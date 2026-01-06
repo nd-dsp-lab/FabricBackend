@@ -1,2 +1,10 @@
 database
 /vendor/
+
+
+# ignore the executable file
+fabric-api-server
+
+# ignore the generated files
+*.sgx
+*.sig

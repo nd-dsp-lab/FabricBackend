@@ -1,0 +1,65 @@
+# Gramine manifest for fabric-api-server SGX enclave
+# This manifest configures the Go application to run in an SGX enclave
+
+# LibOS configuration
+# Entry point to the application binary
+# Use absolute path to the binary - adjust this path based on where you run gramine-sgx
+# Default assumes running from /home/wtang3/FabricBackend/fabric-api-server
+# If running from a different location, update this path or use a symlink
+libos.entrypoint = "/home/wtang3/FabricBackend/fabric-api-server/fabric-api-server"
+
+# Loader configuration
+# Allow command-line arguments to be passed through (e.g., -p 8001 for port)
+# Note: This is marked as insecure but is necessary for the application to accept CLI flags
+loader.insecure__use_cmdline_argv = true
+
+# Environment variable passthrough (insecure but needed for configuration)
+loader.insecure__use_host_env = true
+
+# Set Go runtime environment variables to help with SGX memory constraints
+loader.env.GODEBUG = "madvdontneed=1"
+loader.env.GOMAXPROCS = "4"
+
+# Root filesystem configuration
+# Mount the host root filesystem to allow access to all files
+# The binary will be accessible at its absolute path
+fs.root.type = "chroot"
+fs.root.uri = "file:/"
+
+# Filesystem mounts
+# Mount additional paths needed by the application
+# Note: Since root is the host root, system paths are already accessible
+fs.mounts = [
+    # Temporary filesystem
+    { path = "/tmp", type = "tmpfs" },
+]
+
+# Environment variables
+# These environment variables should be set when running the application
+# They will be passed through to the enclave automatically
+# CRYPTO_PATH - Path to Fabric crypto materials
+# PEER_ENDPOINT - Fabric peer gRPC endpoint (e.g., "localhost:7051")
+# CHAINCODE_NAME - Chaincode name (default: "basic")
+# CHANNEL_NAME - Channel name (default: "mychannel")
+
+# SGX-specific configuration
+# Go applications require large enclave size due to their memory allocator
+# Go reserves a large virtual address space upfront
+sgx.enclave_size = "4G"
+# Go needs many threads for: signal handling, GC workers, network poller, gRPC
+sgx.max_threads = 32
+sgx.debug = true
+
+# Trusted files - the binary must be trusted for execution
+sgx.trusted_files = [
+    "file:/home/wtang3/FabricBackend/fabric-api-server/fabric-api-server",
+]
+
+# Allowed files - files that can be accessed without integrity checks
+# This is needed for certificate files and other runtime files
+sgx.allowed_files = [
+    "file:/home/wtang3/",
+]
+
+# Stack size per thread (optional, defaults to 2M if not specified)
+sys.stack.size = "8M"

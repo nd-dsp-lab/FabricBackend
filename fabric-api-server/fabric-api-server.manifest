@@ -1,0 +1,51 @@
+[libos]
+entrypoint = "/home/wtang3/FabricBackend/fabric-api-server/fabric-api-server"
+
+[loader]
+insecure__use_cmdline_argv = true
+insecure__use_host_env = true
+
+[loader.env]
+GODEBUG = "madvdontneed=1"
+GOMAXPROCS = "4"
+
+[loader.entrypoint]
+uri = "file:/usr/lib/x86_64-linux-gnu/gramine/libsysdb.so"
+sha256 = "e6014513d79ba404b73fcb310c619ddba07da66e696398829cd4a9eb3553c6a5"
+
+[fs]
+mounts = [
+    { path = "/tmp", type = "tmpfs" },
+]
+
+[fs.root]
+type = "chroot"
+uri = "file:/"
+
+[sgx]
+enclave_size = "4G"
+max_threads = 32
+debug = true
+allowed_files = [
+    "file:/home/wtang3/",
+]
+isvprodid = 0
+isvsvn = 0
+remote_attestation = "none"
+enable_stats = false
+edmm_enable = false
+use_exinfo = false
+
+[[sgx.trusted_files]]
+uri = "file:/home/wtang3/FabricBackend/fabric-api-server/fabric-api-server"
+sha256 = "74b58fc954dd7c7be244992ec7d455af66d788487aff2daa71c6ec7f18a9ad6b"
+
+[sgx.cpu_features]
+avx = "unspecified"
+avx512 = "unspecified"
+amx = "unspecified"
+mpx = "disabled"
+pkru = "disabled"
+
+[sys.stack]
+size = "8M"
