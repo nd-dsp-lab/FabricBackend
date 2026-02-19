@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"go-huma-api-server/src/auth"
 	"go-huma-api-server/src/utils"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -124,16 +126,49 @@ func main() {
 			defer utils.GatewayConn.Close()
 		}
 
+		// Initialize token store
+		tokenFilePath := os.Getenv("TOKEN_FILE_PATH")
+		if tokenFilePath == "" {
+			tokenFilePath = "./tokens.json"
+		}
+		tokenStore := auth.NewTokenStore(tokenFilePath)
+		if err := tokenStore.LoadTokens(); err != nil {
+			log.Printf("Warning: Failed to load tokens: %v", err)
+		}
+		log.Printf("Loaded %d tokens from %s", tokenStore.GetTokenCount(), tokenFilePath)
+
 		// Create a new router & API
 		router := chi.NewMux()
 		config := huma.DefaultConfig("My API", "1.0.0")
 		config.Servers = []*huma.Server{
 			{URL: "https://proxy.web3db.org/nasa-project"},
 		}
+		// Add Bearer token security scheme for OpenAPI documentation
+		config.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
+			"bearerAuth": {
+				Type:         "http",
+				Scheme:       "bearer",
+				BearerFormat: "token",
+				Description:  "Enter your Bearer token",
+			},
+		}
+
+		// Create Huma API from router
 		api := humachi.New(router, config)
 
-		// Register POST /create-record
-		huma.Register(api, huma.Operation{
+		// Create authenticated router group
+		// We need to use Chi's Mount with a sub-router that has the auth middleware
+		authRouter := chi.NewRouter()
+		authRouter.Use(auth.BearerAuthMiddleware(tokenStore))
+
+		// Create Huma API for authenticated routes
+		authAPI := humachi.New(authRouter, config)
+
+		// Mount the authenticated router
+		router.Mount("/", authRouter)
+
+		// Register POST /create-record (authenticated)
+		huma.Register(authAPI, huma.Operation{
 			OperationID:   "post-create-record",
 			Method:        http.MethodPost,
 			Path:          "/create-record",
@@ -141,7 +176,13 @@ func main() {
 			Tags:          []string{"Records"},
 			Description:   "Create a record.",
 			DefaultStatus: http.StatusCreated,
+			Security:      []map[string][]string{{"bearerAuth": {}}},
 		}, func(ctx context.Context, input *RecordInput) (*ReceviedRecordResponse, error) {
+			// Print secret key for authenticated request
+			if authCtx := auth.GetAuthContext(ctx); authCtx != nil {
+				fmt.Printf("[Auth] Secret key for token: %s\n", authCtx.SecretKey)
+			}
+
 			record := utils.Record{
 				RecordID:   input.Body.RecordID,
 				DroneID:    input.Body.DroneID,
@@ -160,8 +201,8 @@ func main() {
 			return resp, nil
 		})
 
-		// Register POST /certificates/create
-		huma.Register(api, huma.Operation{
+		// Register POST /certificates/create (authenticated)
+		huma.Register(authAPI, huma.Operation{
 			OperationID:   "post-certificate-create",
 			Method:        http.MethodPost,
 			Path:          "/certificates/create",
@@ -169,6 +210,7 @@ func main() {
 			Tags:          []string{"Certificates"},
 			Description:   "Post a certificate to the blockchain.",
 			DefaultStatus: http.StatusCreated,
+			Security:      []map[string][]string{{"bearerAuth": {}}},
 		}, func(ctx context.Context, input *CertificateInput) (*ReceviedRecordResponse, error) {
 			if input.Body.RecordID == "" {
 				input.Body.RecordID = utils.GetRandomString(10)
@@ -192,8 +234,8 @@ func main() {
 			return resp, nil
 		})
 
-		// Register POST /profiles/create
-		huma.Register(api, huma.Operation{
+		// Register POST /profiles/create (authenticated)
+		huma.Register(authAPI, huma.Operation{
 			OperationID:   "post-profile-create",
 			Method:        http.MethodPost,
 			Path:          "/profiles/create",
@@ -201,6 +243,7 @@ func main() {
 			Tags:          []string{"Profiles"},
 			Description:   "Create a profile.",
 			DefaultStatus: http.StatusCreated,
+			Security:      []map[string][]string{{"bearerAuth": {}}},
 		}, func(ctx context.Context, input *ProfileInput) (*ReceviedRecordResponse, error) {
 			if input.Body.RecordID == "" {
 				input.Body.RecordID = utils.GetRandomString(10)
