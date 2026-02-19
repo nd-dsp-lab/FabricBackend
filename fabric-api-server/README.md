@@ -1,67 +1,399 @@
-# Local API Documentation
+# fabric-api-server
 
-## Overview
+A REST API server for drone certificate and profile management on Hyperledger Fabric blockchain. This Go-based server provides a RESTful interface for interacting with a Hyperledger Fabric network to create, query, and manage records stored on the blockchain.
 
-This project provides a local RESTful API service written in Go for certificate management, using CouchDB as the backend database. The service is containerized and managed via Docker Compose for easy local development and testing.
+## Features
 
----
+- **RESTful API** for blockchain operations using [Huma](https://huma.rocks/) framework
+- **Certificate Management** - Create and query drone pilot certificates
+- **Profile Management** - Create, query, and update pilot/drone profiles
+- **Record History Tracking** - Query the complete history of any record
+- **Local Test Mode** - Run without a Fabric connection for development and testing
+- **Docker Support** - Containerized deployment with Docker Compose
 
-## Start the Service
+## Prerequisites
 
-Make sure you have [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) installed.
+- **Go 1.24+** (for local development)
+- **Hyperledger Fabric test network** (for production mode)
+  - Requires a running Fabric network with chaincode deployed
+  - See [Hyperledger Fabric Samples](https://github.com/hyperledger/fabric-samples) for setup instructions
+- **Docker and Docker Compose** (for containerized deployment)
 
-From the `localapi` directory, run:
+## Configuration
+
+The server can be configured using the following environment variables:
+
+| Variable | Description | Default Value |
+|----------|-------------|---------------|
+| `CRYPTO_PATH` | Path to Fabric crypto materials | `../fabric-samples/test-network/organizations/peerOrganizations/org1.example.com` |
+| `PEER_ENDPOINT` | Fabric peer endpoint | `localhost:7051` |
+| `CHAINCODE_NAME` | Chaincode name | `basic` |
+| `CHANNEL_NAME` | Channel name | `mychannel` |
+
+## Usage
+
+### Local Development Mode (No Fabric Required)
+
+The local test mode allows you to run the server without a Hyperledger Fabric connection. In this mode, all blockchain operations are logged to the console but not actually executed.
+
+```bash
+go run ./src/. --local-test -p 8001
+# or
+go run ./src/. -l -p 8001
+```
+
+### Production Mode (Requires Fabric Network)
+
+```bash
+# Ensure your Fabric network is running first
+go run ./src/. -p 8001
+```
+
+### Docker Deployment
 
 ```bash
 docker compose up --build
 ```
-This command will build the Docker images and start the containers defined in the `docker-compose.yml` file. 
 
-The API will be available at `http://localhost:8080`, you can get a visulized view of API at `http://localhost:8080/docs#`
+The API will be available at `http://localhost:8001`. Interactive API documentation is available at `http://localhost:8001/docs`.
 
-The CouchDB service will be at `http://localhost:5984`, you can access the CouchDB web interface at `http://localhost:5984/_utils/` (username: `admin`, password: `admin123`).
+## CLI Options
 
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--port` | `-p` | Port to listen on | `8001` |
+| `--local-test` | `-l` | Run in local test mode without Fabric connection | `false` |
 
-## API
+## API Endpoints
 
-The API provides the following endpoints:
-- `POST /certificates/create`: Create a new certificate.
-- `POST /certificates/query`: Query for certificates with a Mango selector:
-```json
-{
-  "selector": {
-    "pilot_id": "Pilot00"
-  }
-}
+### Records
+
+#### Create a Record
+```http
+POST /create-record
 ```
-The selector is a JSON object that specifies the criteria for the query. The API will return all certificates that match the selector.
-Currently the API only supports the following fields in the selector:
-- `pilot_id`: The ID of the pilot.
-- `drone_id`: The ID of the drone.
-- `CertificateID`: The ID of the certificate, which is randomly generated.
 
-- `expirationDate`: The expiration date of the certificate. The date is stored as a base 10 string of the Unix timestamp in milliseconds. You need to convert the date to a Unix timestamp in milliseconds before sending it to the API. The API will return all certificates that match the selector. Check [Mango](https://docs.couchdb.org/en/stable/ddocs/mango.html#find-selectors) for more details on the selector syntax.
+Create a generic record on the blockchain.
+
+**Request Body:**
 ```json
 {
-  "selector": {
-    "expiration_date": {
-      "$lt" : "1852247579"
-      }
-  }
+  "recordID": "record-001",
+  "droneID": "drone1",
+  "pilotID": "Pilot00",
+  "zoneID": "Zone00",
+  "recordType": "flight-log",
+  "reserved": "{\"key\": \"value\"}"
 }
 ```
 
+**Response:**
+```json
+{
+  "message": "Record created successfully.",
+  "record": {
+    "recordID": "record-001",
+    "droneID": "drone1",
+    "pilotID": "Pilot00",
+    "zoneID": "Zone00",
+    "recordType": "flight-log",
+    "reserved": "{\"key\": \"value\"}"
+  }
+}
+```
 
-## Certificate Data Structure
-The Certificate structure is defined in [certificate.go](./src/utils/certificate.go):
+#### Query Records with Selector
+```http
+POST /records/query
+```
 
-The Certificate struct defines the schema for certificates managed by the API. It contains fields related to the drone, pilot, and certificate details.
+Query records using a Mango selector.
 
-+ The ```Certificate``` struct defines the schema for certificates managed by the API. It includes fields for drone ID, pilot ID, expiration date (in ISO8601 format), and a serialized certificate string.
-+ The minimum required fields for a certificate are drone_id, pilot_id, and expirationDate, which are used to identify and validate each certificate.
-+ Certificates are stored in the database as ```CertificateDBObject```, which contains the certificate ID, pilot ID, drone ID, expiration date, and the serialized certificate content.
-  + CertificateID is currently a randomly generated unique identifier for the certificate. You can change it in the ```GetCertificateDBObject``` function in [certificate.go](./src/utils/certificate.go).
+**Request Body:**
+```json
+{
+  "selector": {
+    "droneID": "drone1",
+    "recordType": "flight-log"
+  }
+}
+```
 
-  + The actual certificate content ```SerializedCertificate``` is a JSON string that can include additional operational and metadata fields, such as wind conditions, submitter info, SVG content, and status flags.
+**Response:**
+```json
+{
+  "message": "Found 2 records",
+  "records": [
+    {
+      "recordID": "record-001",
+      "droneID": "drone1",
+      "pilotID": "Pilot00",
+      "zoneID": "Zone00",
+      "recordType": "flight-log",
+      "reserved": "{}"
+    }
+  ]
+}
+```
 
-The structure is designed for flexibility and can be modified as needed for your application. 
+#### Get All Records
+```http
+GET /records/all
+```
+
+Retrieve all records from the blockchain.
+
+**Response:**
+```json
+{
+  "message": "Found 10 records",
+  "records": [...]
+}
+```
+
+#### Update a Record
+```http
+POST /records/update
+```
+
+Update an existing record.
+
+**Request Body:**
+```json
+{
+  "recordID": "record-001",
+  "droneID": "drone1",
+  "pilotID": "Pilot00",
+  "zoneID": "Zone01",
+  "recordType": "flight-log",
+  "reserved": "{\"status\": \"completed\"}"
+}
+```
+
+#### Get Record History
+```http
+POST /records/history
+```
+
+Get the complete history of a record including all previous versions.
+
+**Request Body:**
+```json
+{
+  "recordID": "record-001"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Found 3 history records",
+  "history": [
+    {
+      "txId": "abc123...",
+      "timestamp": "2024-01-15T10:30:00Z",
+      "isDelete": false,
+      "record": {...}
+    }
+  ]
+}
+```
+
+### Certificates
+
+#### Create a Certificate
+```http
+POST /certificates/create
+```
+
+Create a certificate record. If `recordID` is not provided, a random one will be generated.
+
+**Request Body:**
+```json
+{
+  "recordID": "cert-001",
+  "droneID": "drone1",
+  "pilotID": "Pilot00",
+  "zoneID": "Zone00",
+  "reserved": "{\"expiry\": \"2025-12-31\"}"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Certificate received and stored successfully.",
+  "record": {
+    "recordID": "cert-001",
+    "droneID": "drone1",
+    "pilotID": "Pilot00",
+    "zoneID": "Zone00",
+    "recordType": "certificate",
+    "reserved": "{\"expiry\": \"2025-12-31\"}"
+  }
+}
+```
+
+#### Query Certificates
+```http
+POST /certificates/query
+```
+
+Query certificates using a Mango selector. The selector automatically filters for `recordType: "certificate"`.
+
+**Request Body:**
+```json
+{
+  "selector": {
+    "recordType": "certificate",
+    "pilotID": "Pilot00"
+  }
+}
+```
+
+### Profiles
+
+#### Create a Profile
+```http
+POST /profiles/create
+```
+
+Create a profile record. If `recordID` is not provided, a random one will be generated.
+
+**Request Body:**
+```json
+{
+  "recordID": "profile-001",
+  "droneID": "drone1",
+  "pilotID": "Pilot00",
+  "zoneID": "Zone00",
+  "reserved": "{\"name\": \"John Doe\"}"
+}
+```
+
+#### Query Profiles
+```http
+POST /profiles/query
+```
+
+Query profiles using a Mango selector. The selector automatically filters for `recordType: "profile"`.
+
+**Request Body:**
+```json
+{
+  "selector": {
+    "recordType": "profile",
+    "pilotID": "Pilot00"
+  }
+}
+```
+
+#### Update a Profile
+```http
+POST /profiles/update
+```
+
+Update an existing profile. Only fields provided in `updateInfo` will be updated.
+
+**Request Body:**
+```json
+{
+  "recordID": "profile-001",
+  "updateInfo": {
+    "droneID": "drone2",
+    "pilotID": "Pilot01",
+    "zoneID": "Zone01",
+    "reserved": "{\"name\": \"Jane Doe\"}"
+  }
+}
+```
+
+## Examples
+
+### Create a Certificate
+
+```bash
+curl -X POST http://localhost:8001/certificates/create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "droneID": "drone1",
+    "pilotID": "Pilot00",
+    "zoneID": "Zone00",
+    "reserved": "{\"expiry\": \"2025-12-31\"}"
+  }'
+```
+
+### Query Certificates by Pilot
+
+```bash
+curl -X POST http://localhost:8001/certificates/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "selector": {
+      "pilotID": "Pilot00"
+    }
+  }'
+```
+
+### Create a Profile
+
+```bash
+curl -X POST http://localhost:8001/profiles/create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "droneID": "drone1",
+    "pilotID": "Pilot00",
+    "zoneID": "Zone00",
+    "reserved": "{\"name\": \"John Doe\", \"license\": \"UAV-12345\"}"
+  }'
+```
+
+### Update a Profile
+
+```bash
+curl -X POST http://localhost:8001/profiles/update \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recordID": "profile-001",
+    "updateInfo": {
+      "zoneID": "Zone01",
+      "reserved": "{\"name\": \"John Doe\", \"license\": \"UAV-12345\", \"status\": \"active\"}"
+    }
+  }'
+```
+
+### Get Record History
+
+```bash
+curl -X POST http://localhost:8001/records/history \
+  -H "Content-Type: application/json" \
+  -d '{
+    "recordID": "record-001"
+  }'
+```
+
+## Project Structure
+
+```
+fabric-api-server/
+├── src/
+│   ├── main.go              # Main application with API endpoints
+│   └── utils/
+│       └── fabric_apis.go   # Fabric blockchain interaction functions
+├── go.mod                   # Go module definition
+├── go.sum                   # Go dependencies checksum
+├── Dockerfile               # Docker image definition
+├── docker-compose.yml       # Docker Compose configuration
+└── README.md                # This file
+```
+
+## Dependencies
+
+- [Huma v2](https://huma.rocks/) - Modern REST API framework for Go
+- [Chi Router](https://github.com/go-chi/chi) - Lightweight HTTP router
+- [Hyperledger Fabric Gateway](https://github.com/hyperledger/fabric-gateway) - Fabric client SDK
+- [gRPC](https://google.golang.org/grpc) - RPC framework
+
+## License
+
+This project is part of the NASA drone certification system research project.
