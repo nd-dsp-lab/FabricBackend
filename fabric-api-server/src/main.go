@@ -18,7 +18,8 @@ import (
 )
 
 type Options struct {
-	Port int `help:"Port to listen on" short:"p" default:"8001"`
+	Port      int  `help:"Port to listen on" short:"p" default:"8001"`
+	LocalTest bool `help:"Run in local test mode without Fabric connection" short:"l" default:"false"`
 }
 
 type RecordInput struct {
@@ -114,18 +115,15 @@ type HistoryQueryResultList struct {
 type EmptyInput struct{}
 
 func main() {
-
-	utils.InitGateway()
-	defer utils.ClientConn.Close()
-	defer utils.GatewayConn.Close()
-
-	// err := utils.InitLedgerWithExampleRecords()
-	// if err != nil {
-	// 	fmt.Printf("Failed to initialize ledger with example records: %v", err)
-	// }
-
 	// Create a CLI app which takes a port option.
 	cli := humacli.New(func(hooks humacli.Hooks, options *Options) {
+		// Initialize Gateway only if not in local test mode
+		if !options.LocalTest {
+			utils.InitGateway()
+			defer utils.ClientConn.Close()
+			defer utils.GatewayConn.Close()
+		}
+
 		// Create a new router & API
 		router := chi.NewMux()
 		config := huma.DefaultConfig("My API", "1.0.0")
@@ -152,7 +150,7 @@ func main() {
 				RecordType: input.Body.RecordType,
 				Reserved:   input.Body.Reserved,
 			}
-			err := utils.CreateRecord(record.RecordID, record.DroneID, record.PilotID, record.ZoneID, record.RecordType, record.Reserved)
+			err := utils.CreateRecord(record.RecordID, record.DroneID, record.PilotID, record.ZoneID, record.RecordType, record.Reserved, options.LocalTest)
 			if err != nil {
 				return nil, err
 			}
@@ -175,7 +173,7 @@ func main() {
 			if input.Body.RecordID == "" {
 				input.Body.RecordID = utils.GetRandomString(10)
 			}
-			err := utils.CreateRecord(input.Body.RecordID, input.Body.DroneID, input.Body.PilotID, input.Body.ZoneID, "certificate", input.Body.Reserved)
+			err := utils.CreateRecord(input.Body.RecordID, input.Body.DroneID, input.Body.PilotID, input.Body.ZoneID, "certificate", input.Body.Reserved, options.LocalTest)
 			if err != nil {
 				return nil, err
 			}
@@ -207,7 +205,7 @@ func main() {
 			if input.Body.RecordID == "" {
 				input.Body.RecordID = utils.GetRandomString(10)
 			}
-			err := utils.CreateRecord(input.Body.RecordID, input.Body.DroneID, input.Body.PilotID, input.Body.ZoneID, "profile", input.Body.Reserved)
+			err := utils.CreateRecord(input.Body.RecordID, input.Body.DroneID, input.Body.PilotID, input.Body.ZoneID, "profile", input.Body.Reserved, options.LocalTest)
 			if err != nil {
 				err = fmt.Errorf("failed to create record: %v, check if the recordID already exists", err)
 				return nil, err
@@ -244,7 +242,7 @@ func main() {
 				return nil, err
 			}
 
-			recordsJSON, err := utils.GetRecordWithSelector(string(selectorJSON))
+			recordsJSON, err := utils.GetRecordWithSelector(string(selectorJSON), options.LocalTest)
 			if err != nil {
 				return nil, err
 			}
@@ -279,7 +277,7 @@ func main() {
 				return nil, err
 			}
 
-			recordsJSON, err := utils.GetRecordWithSelector(string(selectorJSON))
+			recordsJSON, err := utils.GetRecordWithSelector(string(selectorJSON), options.LocalTest)
 			if err != nil {
 				return nil, err
 			}
@@ -325,7 +323,7 @@ func main() {
 				return nil, err
 			}
 
-			err = utils.UpdateRecord(input.Body.RecordID, droneID, pilotID, zoneID, "profile", reserved)
+			err = utils.UpdateRecord(input.Body.RecordID, droneID, pilotID, zoneID, "profile", reserved, options.LocalTest)
 			resp := &ReceviedRecordResponse{}
 			resp.Body.Message = "Profile updated successfully."
 			resp.Body.Record = utils.Record{
@@ -355,7 +353,7 @@ func main() {
 				return nil, err
 			}
 
-			recordsJSON, err := utils.GetRecordWithSelector(string(selectorJSON))
+			recordsJSON, err := utils.GetRecordWithSelector(string(selectorJSON), options.LocalTest)
 			if err != nil {
 				return nil, err
 			}
@@ -383,7 +381,7 @@ func main() {
 			Description:   "Get all records.",
 			DefaultStatus: http.StatusOK,
 		}, func(ctx context.Context, input *EmptyInput) (*RecordListResponse, error) {
-			recordsJSON, err := utils.GetAllRecords()
+			recordsJSON, err := utils.GetAllRecords(options.LocalTest)
 			if err != nil {
 				return nil, err
 			}
@@ -410,7 +408,7 @@ func main() {
 			Description:   "Update a record.",
 			DefaultStatus: http.StatusOK,
 		}, func(ctx context.Context, input *RecordInput) (*ReceviedRecordResponse, error) {
-			err := utils.UpdateRecord(input.Body.RecordID, input.Body.DroneID, input.Body.PilotID, input.Body.ZoneID, input.Body.RecordType, input.Body.Reserved)
+			err := utils.UpdateRecord(input.Body.RecordID, input.Body.DroneID, input.Body.PilotID, input.Body.ZoneID, input.Body.RecordType, input.Body.Reserved, options.LocalTest)
 			if err != nil {
 				return nil, err
 			}
@@ -437,7 +435,7 @@ func main() {
 			Description:   "Get the history of a record. This api requires the recordID to be provided.",
 			DefaultStatus: http.StatusOK,
 		}, func(ctx context.Context, input *RecordIDInput) (*HistoryQueryResultList, error) {
-			historyJSON, err := utils.GetRecordHistory(input.Body.RecordID)
+			historyJSON, err := utils.GetRecordHistory(input.Body.RecordID, options.LocalTest)
 			if err != nil {
 				return nil, err
 			}

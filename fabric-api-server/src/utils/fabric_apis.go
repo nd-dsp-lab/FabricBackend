@@ -180,7 +180,11 @@ func formatJSON(data []byte) string {
 // Drone Record APIs
 // =====================================================================================================================
 
-func InitLedgerWithExampleRecords() error {
+func InitLedgerWithExampleRecords(localTest bool) error {
+	if localTest {
+		fmt.Printf("[LOCAL TEST] InitLedgerWithExampleRecords called\n")
+		return nil
+	}
 	_, err := ClientContract.SubmitTransaction("InitLedgerWithExampleRecords")
 	if err != nil {
 		fmt.Printf("failed to submit InitLedgerWithExampleRecords transaction: %v\n", err)
@@ -189,7 +193,12 @@ func InitLedgerWithExampleRecords() error {
 	return nil
 }
 
-func CreateRecord(recordID string, droneID string, pilotID string, zoneID string, recordType string, reserved string) error {
+func CreateRecord(recordID string, droneID string, pilotID string, zoneID string, recordType string, reserved string, localTest bool) error {
+	if localTest {
+		fmt.Printf("[LOCAL TEST] CreateRecord called with params: recordID=%s, droneID=%s, pilotID=%s, zoneID=%s, recordType=%s, reserved=%s\n",
+			recordID, droneID, pilotID, zoneID, recordType, reserved)
+		return nil
+	}
 	_, err := ClientContract.SubmitTransaction("CreateRecord", recordID, droneID, pilotID, zoneID, recordType, reserved)
 	if err != nil {
 		fmt.Printf("failed to submit CreateRecord transaction, possibly the record already exists: %v\n", err)
@@ -198,7 +207,11 @@ func CreateRecord(recordID string, droneID string, pilotID string, zoneID string
 	return nil
 }
 
-func GetAllRecords() (string, error) {
+func GetAllRecords(localTest bool) (string, error) {
+	if localTest {
+		fmt.Printf("[LOCAL TEST] GetAllRecords called\n")
+		return "[]", nil
+	}
 	evaluateResult, err := ClientContract.EvaluateTransaction("GetAllRecords")
 	if err != nil {
 		fmt.Printf("failed to evaluate GetAllRecords transaction: %v\n", err)
@@ -214,7 +227,12 @@ func GetAllRecords() (string, error) {
 	return result, nil
 }
 
-func UpdateRecord(recordID string, droneID string, pilotID string, zoneID string, recordType string, reserved string) error {
+func UpdateRecord(recordID string, droneID string, pilotID string, zoneID string, recordType string, reserved string, localTest bool) error {
+	if localTest {
+		fmt.Printf("[LOCAL TEST] UpdateRecord called with params: recordID=%s, droneID=%s, pilotID=%s, zoneID=%s, recordType=%s, reserved=%s\n",
+			recordID, droneID, pilotID, zoneID, recordType, reserved)
+		return nil
+	}
 	_, err := ClientContract.SubmitTransaction("UpdateRecord", recordID, droneID, pilotID, zoneID, recordType, reserved)
 	if err != nil {
 		fmt.Printf("failed to submit UpdateRecord transaction: %v\n", err)
@@ -223,7 +241,11 @@ func UpdateRecord(recordID string, droneID string, pilotID string, zoneID string
 	return nil
 }
 
-func GetRecordWithSelector(rawSelector string) (string, error) {
+func GetRecordWithSelector(rawSelector string, localTest bool) (string, error) {
+	if localTest {
+		fmt.Printf("[LOCAL TEST] GetRecordWithSelector called with selector: %s\n", rawSelector)
+		return "[]", nil
+	}
 	// selector := map[string]interface{}{"selector": rawSelector}
 
 	// selectorJSON, err := json.Marshal(rawSelector)
@@ -249,7 +271,11 @@ func GetRecordWithSelector(rawSelector string) (string, error) {
 	return result, nil
 }
 
-func GetRecordHistory(recordID string) (string, error) {
+func GetRecordHistory(recordID string, localTest bool) (string, error) {
+	if localTest {
+		fmt.Printf("[LOCAL TEST] GetRecordHistory called with recordID: %s\n", recordID)
+		return "[]", nil
+	}
 	evaluateResult, err := ClientContract.EvaluateTransaction("GetRecordHistory", recordID)
 	if err != nil {
 		fmt.Printf("failed to evaluate GetRecordHistory transaction: %v\n", err)
