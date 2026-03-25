@@ -36,10 +36,6 @@ Start docker with [Docker Desktop](https://www.docker.com/).
 > This may fail at contract installation in rare occasions, simply trying the command again should resolve the problem.
 5. Use `make api_server` to bring up the api service
 
-## Initialize the ledger with csv data
-Navigate to [FabricBackend/data-import-helper](./data-import-helper) and use `go run import_file.go` to put the data in ds1.csv to the ledger.
-> This helper relies on the api server.
-
 ## To bring it down
 1. Use `make down` to turn the network down
 2. Use `make clean` to clean up the downloaded repos and docker images.
@@ -48,17 +44,25 @@ By default all the data will be cleaned when the network is down.
 
 ## APIs
 
-The default api server address is http://localhost:6999
+The default API server address is http://localhost:8001
 
-> `GET` api/record/all
+> `GET` /records/all
 
 Return all records in standard JSON
 
-> `GET` api/record/{droneID}
+> `POST` /records/query
 
-Return all records for `{droneID}` in standard JSON
+Query records using a CouchDB Mango selector
 
-> `POST` api/record/create
+> `POST` /records/update
+
+Update a record
+
+> `POST` /records/history
+
+Get the history of a record
+
+> `POST` /create-record (Authenticated)
 
 Create a record with the JSON. The JSON needs to be formatted as the sample data.
 
@@ -71,7 +75,7 @@ Return records with selector specified by {selectorString} -->
 ## Ports and Service
 |Name|Type|Ports|
 |----|----|-----|
-|API server|Go|6999|
+|API server|Go|8001|
 |orderer|Docker|7050|
 |peer0.org1|Docker|7051|
 |peer0.org2|Docker|9051|

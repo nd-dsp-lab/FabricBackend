@@ -135,12 +135,16 @@ func main() {
 		if err := tokenStore.LoadTokens(); err != nil {
 			log.Printf("Warning: Failed to load tokens: %v", err)
 		}
+		// Seed a default token for local testing
+		const devToken = "dev-test-token"
+		tokenStore.AddToken(devToken, "dev-secret-key")
 		log.Printf("Loaded %d tokens from %s", tokenStore.GetTokenCount(), tokenFilePath)
 
 		// Create a new router & API
 		router := chi.NewMux()
 		config := huma.DefaultConfig("My API", "1.0.0")
 		config.Servers = []*huma.Server{
+			{URL: "http://localhost:8001"},
 			{URL: "https://proxy.web3db.org/nasa-project"},
 		}
 		// Add Bearer token security scheme for OpenAPI documentation
@@ -149,7 +153,7 @@ func main() {
 				Type:         "http",
 				Scheme:       "bearer",
 				BearerFormat: "token",
-				Description:  "Enter your Bearer token",
+				Description:  "Enter your Bearer token. Default testing token: dev-test-token",
 			},
 		}
 

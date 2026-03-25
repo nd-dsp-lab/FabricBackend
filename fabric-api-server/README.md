@@ -64,11 +64,72 @@ The API will be available at `http://localhost:8001`. Interactive API documentat
 | `--port` | `-p` | Port to listen on | `8001` |
 | `--local-test` | `-l` | Run in local test mode without Fabric connection | `false` |
 
+## Authentication
+
+Some endpoints require Bearer token authentication. The default token is seeded for local testing:
+
+| Token | Secret Key |
+|-------|------------|
+| `dev-test-token` | `dev-secret-key` |
+
+### Token Management
+
+Tokens are stored in a JSON file. The default location is `./tokens.json` in the working directory.
+
+**Environment Variables:**
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `TOKEN_FILE_PATH` | Path to token storage file | `./tokens.json` |
+
+**Token File Format:**
+```json
+{
+  "tokens": {
+    "your-token": "your-secret-key"
+  }
+}
+```
+
+### Authenticated Endpoints
+
+The following endpoints require Bearer token authentication:
+
+- `POST /create-record`
+- `POST /certificates/create`
+- `POST /profiles/create`
+
+**Example:**
+```bash
+curl -X POST http://localhost:8001/certificates/create \
+  -H "Authorization: Bearer dev-test-token" \
+  -H "X-Secret-Key: dev-secret-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "droneID": "drone1",
+    "pilotID": "Pilot00",
+    "zoneID": "Zone00",
+    "reserved": "{\"expiry\": \"2025-12-31\"}"
+  }'
+```
+
+## Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `CRYPTO_PATH` | Path to Fabric crypto materials | `../fabric-samples/test-network/organizations/peerOrganizations/org1.example.com` |
+| `PEER_ENDPOINT` | Fabric peer endpoint | `localhost:7051` |
+| `CHAINCODE_NAME` | Chaincode name | `basic` |
+| `CHANNEL_NAME` | Channel name | `mychannel` |
+| `TOKEN_FILE_PATH` | Path to token storage file | `./tokens.json` |
+
 ## API Endpoints
+
+All endpoints are relative to the base URL `http://localhost:8001`.
 
 ### Records
 
-#### Create a Record
+#### Create a Record (Authenticated)
 ```http
 POST /create-record
 ```
@@ -107,7 +168,7 @@ Create a generic record on the blockchain.
 POST /records/query
 ```
 
-Query records using a Mango selector.
+Query records using a CouchDB Mango selector.
 
 **Request Body:**
 ```json
@@ -122,17 +183,19 @@ Query records using a Mango selector.
 **Response:**
 ```json
 {
-  "message": "Found 2 records",
-  "records": [
-    {
-      "recordID": "record-001",
-      "droneID": "drone1",
-      "pilotID": "Pilot00",
-      "zoneID": "Zone00",
-      "recordType": "flight-log",
-      "reserved": "{}"
-    }
-  ]
+  "body": {
+    "message": "Found 2 records",
+    "records": [
+      {
+        "recordID": "record-001",
+        "droneID": "drone1",
+        "pilotID": "Pilot00",
+        "zoneID": "Zone00",
+        "recordType": "flight-log",
+        "reserved": "{}"
+      }
+    ]
+  }
 }
 ```
 
@@ -201,7 +264,7 @@ Get the complete history of a record including all previous versions.
 
 ### Certificates
 
-#### Create a Certificate
+#### Create a Certificate (Authenticated)
 ```http
 POST /certificates/create
 ```
@@ -253,7 +316,7 @@ Query certificates using a Mango selector. The selector automatically filters fo
 
 ### Profiles
 
-#### Create a Profile
+#### Create a Profile (Authenticated)
 ```http
 POST /profiles/create
 ```

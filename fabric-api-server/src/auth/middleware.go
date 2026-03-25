@@ -20,6 +20,12 @@ type AuthContext struct {
 func BearerAuthMiddleware(tokenStore *TokenStore) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Skip auth for docs and OpenAPI endpoints
+			if r.URL.Path == "/docs" || r.URL.Path == "/openapi.json" || r.URL.Path == "/openapi.yaml" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			authHeader := r.Header.Get("Authorization")
 
 			if authHeader == "" {

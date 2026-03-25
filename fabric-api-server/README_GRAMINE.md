@@ -81,6 +81,16 @@ The application requires the following environment variables:
   export CHANNEL_NAME=mychannel
   ```
 
+- **TOKEN_FILE_PATH** (optional): Path to token storage file (default: "./tokens.json")
+  ```bash
+  export TOKEN_FILE_PATH=/path/to/tokens.json
+  ```
+
+- **--local-test or -l**: Run in local test mode without Fabric connection (for development)
+  ```bash
+  gramine-direct fabric-api-server -l -p 8001
+  ```
+
 ### Certificate Path Configuration
 
 The application reads certificates from the path specified in `CRYPTO_PATH`. The Gramine manifest mounts the root filesystem, so:

@@ -2,7 +2,7 @@
 REPO_SRC = $(shell pwd)
 FABRIC_TEST_NETWORK_SRC = $(REPO_SRC)/fabric-samples/test-network
 CONTRACT_SRC = $(REPO_SRC)/drp-storage/chaincode-go
-CLIENT_SRC = $(REPO_SRC)/drp-client
+CLIENT_SRC = $(REPO_SRC)/fabric-api-server/src
 TEST_CONTRACT_SRC = $(REPO_SRC)/fabric-samples/asset-transfer-basic/chaincode-go
 
 check-prerequisite:
