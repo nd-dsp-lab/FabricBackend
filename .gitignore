@@ -28,4 +28,6 @@ install-fabric.sh
 fabric-samples/
 
 # sample dataset
-drp-client/ds1.csv
+drp-client/ds1.csvnd-wenyi-mbp.pem
+*.bak
+hash-api.log

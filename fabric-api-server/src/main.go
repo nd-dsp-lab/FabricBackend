@@ -114,6 +114,34 @@ type HistoryQueryResultList struct {
 	}
 }
 
+// ==================== Hash API types ====================
+
+type HashStoreInput struct {
+	Body struct {
+		Identifier string `json:"identifier" doc:"Unique identifier for the hash entry"`
+		Hash       string `json:"hash" doc:"Hash value to store"`
+	}
+}
+
+type HashStoreResponse struct {
+	Body struct {
+		Message string `json:"message" doc:"Status message"`
+	}
+}
+
+type HashRetrieveInput struct {
+	Body struct {
+		Identifier string `json:"identifier" doc:"Identifier to look up"`
+	}
+}
+
+type HashRetrieveResponse struct {
+	Body struct {
+		Identifier string `json:"identifier" doc:"The identifier"`
+		Hash       string `json:"hash" doc:"The stored hash value"`
+	}
+}
+
 type EmptyInput struct{}
 
 func main() {
@@ -122,8 +150,6 @@ func main() {
 		// Initialize Gateway only if not in local test mode
 		if !options.LocalTest {
 			utils.InitGateway()
-			defer utils.ClientConn.Close()
-			defer utils.GatewayConn.Close()
 		}
 
 		// Initialize token store
@@ -499,9 +525,91 @@ func main() {
 			return resp, nil
 		})
 
+
+		// ==================== Hash API endpoints ====================
+
+		// Register POST /hash/store (authenticated — write operation)
+		huma.Register(authAPI, huma.Operation{
+			OperationID:   "post-hash-store",
+			Method:        http.MethodPost,
+			Path:          "/hash/store",
+			Summary:       "Store a hash",
+			Tags:          []string{"Hash"},
+			Description:   "Store an (identifier, hash) pair on the blockchain.",
+			DefaultStatus: http.StatusCreated,
+			Security:      []map[string][]string{{"bearerAuth": {}}},
+		}, func(ctx context.Context, input *HashStoreInput) (*HashStoreResponse, error) {
+			if input.Body.Identifier == "" {
+				return nil, huma.Error400BadRequest("identifier is required")
+			}
+			if input.Body.Hash == "" {
+				return nil, huma.Error400BadRequest("hash is required")
+			}
+
+			// Use CreateRecord: identifier→recordID, hash→reserved, recordType="hash"
+			err := utils.CreateRecord(
+				input.Body.Identifier, // recordID
+				"",                    // droneID (unused)
+				"",                    // pilotID (unused)
+				"",                    // zoneID (unused)
+				"hash",               // recordType
+				input.Body.Hash,      // reserved = hash value
+				options.LocalTest,
+			)
+			if err != nil {
+				return nil, huma.Error409Conflict(
+					fmt.Sprintf("failed to store hash: %v", err),
+				)
+			}
+
+			resp := &HashStoreResponse{}
+			resp.Body.Message = "Hash stored successfully."
+			return resp, nil
+		})
+
+		// Register POST /hash/retrieve (no auth — read operation)
+		huma.Register(api, huma.Operation{
+			OperationID:   "post-hash-retrieve",
+			Method:        http.MethodPost,
+			Path:          "/hash/retrieve",
+			Summary:       "Retrieve a hash",
+			Tags:          []string{"Hash"},
+			Description:   "Retrieve a stored hash by its identifier.",
+			DefaultStatus: http.StatusOK,
+		}, func(ctx context.Context, input *HashRetrieveInput) (*HashRetrieveResponse, error) {
+			if input.Body.Identifier == "" {
+				return nil, huma.Error400BadRequest("identifier is required")
+			}
+
+			recordJSON, err := utils.ReadRecord(input.Body.Identifier, options.LocalTest)
+			if err != nil {
+				return nil, huma.Error404NotFound(
+					fmt.Sprintf("hash not found for identifier '%s': %v", input.Body.Identifier, err),
+				)
+			}
+
+			var record utils.Record
+			if err := json.Unmarshal([]byte(recordJSON), &record); err != nil {
+				return nil, err
+			}
+
+			resp := &HashRetrieveResponse{}
+			resp.Body.Identifier = record.RecordID
+			resp.Body.Hash = record.Reserved
+			return resp, nil
+		})
+
+
+		
 		hooks.OnStart(func() {
+			if !options.LocalTest {
+				defer utils.ClientConn.Close()
+				defer utils.GatewayConn.Close()
+			}
 			fmt.Printf("Starting server on port %d...\n", options.Port)
-			http.ListenAndServe(fmt.Sprintf(":%d", options.Port), router)
+			if err := http.ListenAndServe(fmt.Sprintf(":%d", options.Port), router); err != nil {
+   			 log.Fatalf("Server failed: %v", err)
+				}
 		})
 	})
 

@@ -1,5 +1,5 @@
 [libos]
-entrypoint = "/home/wtang3/FabricBackend/fabric-api-server/fabric-api-server"
+entrypoint = "/home/yliu73/NASA_blkch/FabricBackend/fabric-api-server/fabric-api-server"
 
 [loader]
 insecure__use_cmdline_argv = true
@@ -28,6 +28,7 @@ max_threads = 32
 debug = true
 allowed_files = [
     "file:/home/wtang3/",
+    "file:/home/yliu73/",
 ]
 isvprodid = 0
 isvsvn = 0
@@ -37,8 +38,8 @@ edmm_enable = false
 use_exinfo = false
 
 [[sgx.trusted_files]]
-uri = "file:/home/wtang3/FabricBackend/fabric-api-server/fabric-api-server"
-sha256 = "74b58fc954dd7c7be244992ec7d455af66d788487aff2daa71c6ec7f18a9ad6b"
+uri = "file:/home/yliu73/NASA_blkch/FabricBackend/fabric-api-server/fabric-api-server"
+sha256 = "1e787af2ab7d470fac8ec513a43a5caed1009b366918d405c7e41ff370454012"
 
 [sgx.cpu_features]
 avx = "unspecified"

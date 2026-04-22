@@ -4,9 +4,9 @@
 # LibOS configuration
 # Entry point to the application binary
 # Use absolute path to the binary - adjust this path based on where you run gramine-sgx
-# Default assumes running from /home/wtang3/FabricBackend/fabric-api-server
+# Default assumes running from /home/yliu73/NASA_blkch/FabricBackend/fabric-api-server
 # If running from a different location, update this path or use a symlink
-libos.entrypoint = "/home/wtang3/FabricBackend/fabric-api-server/fabric-api-server"
+libos.entrypoint = "/home/yliu73/NASA_blkch/FabricBackend/fabric-api-server/fabric-api-server"
 
 # Loader configuration
 # Allow command-line arguments to be passed through (e.g., -p 8001 for port)
@@ -52,13 +52,14 @@ sgx.debug = true
 
 # Trusted files - the binary must be trusted for execution
 sgx.trusted_files = [
-    "file:/home/wtang3/FabricBackend/fabric-api-server/fabric-api-server",
+    "file:/home/yliu73/NASA_blkch/FabricBackend/fabric-api-server/fabric-api-server",
 ]
 
 # Allowed files - files that can be accessed without integrity checks
 # This is needed for certificate files and other runtime files
 sgx.allowed_files = [
     "file:/home/wtang3/",
+    "file:/home/yliu73/",
 ]
 
 # Stack size per thread (optional, defaults to 2M if not specified)

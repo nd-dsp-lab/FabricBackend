@@ -285,3 +285,27 @@ func GetRecordHistory(recordID string, localTest bool) (string, error) {
 	result := formatJSON(evaluateResult)
 	return result, nil
 }
+func ReadRecord(recordID string, localTest bool) (string, error) {
+	if localTest {
+		fmt.Printf("[LOCAL TEST] ReadRecord called with recordID: %s\n", recordID)
+		// Return a mock record for testing
+		mockRecord := Record{
+			RecordID:   recordID,
+			DroneID:    "",
+			PilotID:    "",
+			ZoneID:     "",
+			RecordType: "hash",
+			Reserved:   "mock-hash-value",
+		}
+		mockJSON, _ := json.Marshal(mockRecord)
+		return string(mockJSON), nil
+	}
+	evaluateResult, err := ClientContract.EvaluateTransaction("ReadRecord", recordID)
+	if err != nil {
+		fmt.Printf("failed to evaluate ReadRecord transaction: %v\n", err)
+		return "", err
+	}
+
+	result := formatJSON(evaluateResult)
+	return result, nil
+}
