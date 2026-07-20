@@ -39,7 +39,7 @@ use_exinfo = false
 
 [[sgx.trusted_files]]
 uri = "file:/home/yliu73/NASA_blkch/FabricBackend/fabric-api-server/fabric-api-server"
-sha256 = "1e787af2ab7d470fac8ec513a43a5caed1009b366918d405c7e41ff370454012"
+sha256 = "ae8ecca48269e4df6c7f46125ec060602300dd32b4e5698e3785984a95cd5787"
 
 [sgx.cpu_features]
 avx = "unspecified"

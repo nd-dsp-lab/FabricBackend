@@ -557,8 +557,22 @@ func main() {
 				options.LocalTest,
 			)
 			if err != nil {
+				detail := &huma.ErrorDetail{
+					Message:  fmt.Sprintf("identifier '%s' already exists", input.Body.Identifier),
+					Location: "body.identifier",
+				}
+				if existingJSON, readErr := utils.ReadRecord(input.Body.Identifier, options.LocalTest); readErr == nil {
+					var existing utils.Record
+					if json.Unmarshal([]byte(existingJSON), &existing) == nil {
+						detail.Value = map[string]string{
+							"identifier": existing.RecordID,
+							"hash":       existing.Reserved,
+						}
+					}
+				}
 				return nil, huma.Error409Conflict(
 					fmt.Sprintf("failed to store hash: %v", err),
+					detail,
 				)
 			}
 
